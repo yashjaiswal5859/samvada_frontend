@@ -7,6 +7,7 @@ import { getCallRecords } from '../../api/calls';
 import { CallRecord } from '../../types';
 import { formatDuration, formatDate } from '../../utils/formatters';
 import { Search, Phone, MessageSquare, ChevronRight } from 'lucide-react';
+import { CallsNav } from '../../components/layout/CallsNav';
 
 export const CallHistoryPage: React.FC = () => {
   const [calls, setCalls] = useState<CallRecord[]>([]);
@@ -25,10 +26,10 @@ export const CallHistoryPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="border-b border-zinc-800 pb-5">
-        <h2 className="text-2xl font-extrabold text-white tracking-tight">Call History & Transcripts</h2>
-        <p className="text-xs text-zinc-400 mt-1">Audit past voice conversations, AI sentiment ratings, and recordings.</p>
-      </div>
+      <CallsNav
+        title="Call History & Transcripts"
+        subtitle="Audit past voice conversations, AI sentiment ratings, and recordings."
+      />
 
       <Card className="space-y-4">
         <div className="relative max-w-md">

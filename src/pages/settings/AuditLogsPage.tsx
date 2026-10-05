@@ -3,7 +3,6 @@
 // =============================================================================
 
 import React, { useState, useEffect } from 'react';
-import { NavLink } from 'react-router-dom';
 import {
   FileText,
   Search,
@@ -22,6 +21,7 @@ import {
 } from 'lucide-react';
 import { getAuditLogs, AuditLogEntry } from '../../api/settings';
 import { useToast } from '../../contexts/ToastContext';
+import { SettingsNav } from '../../components/layout/SettingsNav';
 
 export const AuditLogsPage: React.FC = () => {
   const toast = useToast();
@@ -33,16 +33,6 @@ export const AuditLogsPage: React.FC = () => {
   const [selectedLog, setSelectedLog] = useState<AuditLogEntry | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
   const pageSize = 20;
-
-  const tabs = [
-    { label: 'Profile', path: '/settings/profile', active: false },
-    { label: 'Workspace', path: '/settings', active: false },
-    { label: 'Security', path: '/settings/security', active: false },
-    { label: 'Audit Logs', path: '/settings/audit-logs', active: true },
-    { label: 'Notifications', path: '/notifications', active: false },
-    { label: 'API & Webhooks', path: '/integrations', active: false },
-    { label: 'Plan & Billing', path: '/settings/billing', active: false }
-  ];
 
   const fetchLogs = async () => {
     setLoading(true);
@@ -109,33 +99,10 @@ export const AuditLogsPage: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-12 max-w-7xl mx-auto px-4 sm:px-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-          <Shield className="w-6 h-6 text-indigo-400" />
-          Settings
-        </h1>
-        <p className="text-xs text-zinc-400 mt-1">
-          Manage your personal identity, workspace security, compliance audit logs, and integrations.
-        </p>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex items-center gap-2 border-b border-zinc-800/80 pb-2 overflow-x-auto">
-        {tabs.map((tab) => (
-          <NavLink
-            key={tab.label}
-            to={tab.path}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
-              tab.active
-                ? 'bg-zinc-800 text-white shadow-sm'
-                : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/60'
-            }`}
-          >
-            {tab.label}
-          </NavLink>
-        ))}
-      </div>
+      <SettingsNav
+        title="Audit Logs"
+        subtitle="Immutable tamper-evident record of administrative mutations, configuration updates, and security events."
+      />
 
       {/* Audit Log Card */}
       <div className="bg-[#0c101b] border border-zinc-800/80 rounded-2xl p-6 shadow-xl space-y-6">

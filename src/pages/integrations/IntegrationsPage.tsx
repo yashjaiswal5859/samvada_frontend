@@ -22,6 +22,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { getIntegrations, toggleIntegration } from '../../api/integrations';
 import { getApiKeys, createApiKey, deleteApiKey, getWebhooks, createWebhook, deleteWebhook } from '../../api/settings';
 import { Integration, ApiKey } from '../../types';
+import { SettingsNav } from '../../components/layout/SettingsNav';
 
 interface WebhookItem {
   id: string;
@@ -158,13 +159,15 @@ export const IntegrationsPage: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in pb-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <SettingsNav
+        title="Integrations & API Keys"
+        subtitle="Connect Samvada AI with your telephony carriers, CRM platforms, developer APIs, and webhooks."
+      />
+
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Integrations</h1>
-          <p className="text-xs sm:text-sm text-zinc-400 mt-1">
-            Connect Samvada with your telephony carriers, CRM platforms, and developer webhooks.
-          </p>
+          <h2 className="text-base font-bold text-white">Installed Integrations & Credentials</h2>
+          <p className="text-xs text-zinc-400">Configure phone gateways, webhooks, and programmatic API access.</p>
         </div>
         <div className="flex items-center gap-2.5 self-start sm:self-auto">
           <button
@@ -172,7 +175,7 @@ export const IntegrationsPage: React.FC = () => {
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-zinc-700 bg-zinc-900/60 hover:bg-zinc-800 text-zinc-200 text-xs font-semibold transition-all cursor-pointer"
           >
             <BookOpen className="w-3.5 h-3.5" />
-            <span>View Documentation</span>
+            <span>Documentation</span>
           </button>
           <button
             onClick={() => setShowKeyModal(true)}
@@ -450,7 +453,7 @@ export const IntegrationsPage: React.FC = () => {
           <form onSubmit={handleCreateWebhook} className="bg-[#0f1424] border border-zinc-800 rounded-2xl max-w-md w-full p-6 space-y-4">
             <h3 className="text-sm font-bold text-white">Register Webhook Endpoint</h3>
             <p className="text-xs text-zinc-400">
-              Enter the HTTPS endpoint where Samvada should send real-time JSON payloads for call and campaign events.
+              Enter the HTTPS endpoint where Samvada AI should send real-time JSON payloads for call and campaign events.
             </p>
             <div>
               <label className="block text-xs font-semibold text-zinc-300 mb-1">Webhook URL</label>

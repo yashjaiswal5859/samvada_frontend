@@ -24,6 +24,7 @@ import {
   updateNotificationPreferences,
   sendTestNotification,
 } from '../../api/settings';
+import { SettingsNav } from '../../components/layout/SettingsNav';
 
 export const NotificationsPage: React.FC = () => {
   const toast = useToast();
@@ -63,15 +64,6 @@ export const NotificationsPage: React.FC = () => {
     });
   }, []);
 
-  const tabs = [
-    { label: 'Profile', path: '/settings/profile', active: false },
-    { label: 'Workspace', path: '/settings', active: false },
-    { label: 'Security', path: '/settings/security', active: false },
-    { label: 'Notifications', path: '/notifications', active: true },
-    { label: 'Preferences', path: '/settings', active: false },
-    { label: 'API & Webhooks', path: '/integrations', active: false },
-    { label: 'Plan & Billing', path: '/settings/billing', active: false }
-  ];
 
   const togglePref = (eventKey: keyof typeof prefs, channel: 'email' | 'inApp' | 'slack') => {
     setPrefs((prev) => {
@@ -112,30 +104,10 @@ export const NotificationsPage: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Top Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-white tracking-tight">Notifications</h1>
-        <p className="text-sm text-zinc-400 mt-0.5">
-          Stay updated on what matters. Choose how and when you want to be notified.
-        </p>
-      </div>
-
-      {/* Tabs Navigation */}
-      <div className="flex items-center gap-6 border-b border-zinc-800 text-xs font-medium overflow-x-auto">
-        {tabs.map((tab) => (
-          <NavLink
-            key={tab.label}
-            to={tab.path}
-            className={`pb-3 whitespace-nowrap transition-colors relative ${
-              tab.active
-                ? 'text-blue-400 font-semibold border-b-2 border-blue-500'
-                : 'text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            {tab.label}
-          </NavLink>
-        ))}
-      </div>
+      <SettingsNav
+        title="Notification Settings"
+        subtitle="Stay updated on what matters. Choose how and when you want to be notified across channels."
+      />
 
       {/* Top Hero Notification Banner */}
       <div className="rounded-2xl border border-blue-500/20 bg-gradient-to-r from-[#0c1427] via-[#091020] to-[#0d162a] p-5 flex items-center gap-4 shadow-xl">
@@ -187,7 +159,7 @@ export const NotificationsPage: React.FC = () => {
                   </div>
                   <div>
                     <div className="text-xs font-bold text-white">In-app</div>
-                    <div className="text-[11px] text-zinc-400">Get notifications within Samvada</div>
+                    <div className="text-[11px] text-zinc-400">Get notifications within Samvada AI</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -656,8 +628,8 @@ export const NotificationsPage: React.FC = () => {
                     <Mail className="w-3.5 h-3.5" />
                   </div>
                   <div>
-                    <div className="text-xs font-bold text-white leading-tight">Samvada</div>
-                    <div className="text-[10px] text-zinc-400 font-mono">&lt;noreply@Samvada.ai&gt;</div>
+                    <div className="text-xs font-bold text-white leading-tight">Samvada AI</div>
+                    <div className="text-[10px] text-zinc-400 font-mono">&lt;noreply@samvada.ai&gt;</div>
                   </div>
                 </div>
                 <span className="text-[10px] text-zinc-500">2 min ago</span>

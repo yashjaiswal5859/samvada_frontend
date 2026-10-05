@@ -397,10 +397,25 @@ export const LiveDemoPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#06080e] text-slate-100 flex flex-col justify-between px-4 sm:px-8 lg:px-14 py-6 relative overflow-hidden font-sans selection:bg-blue-600 selection:text-white">
-      {/* Background ambient lighting */}
-      <div className="absolute top-1/4 -left-32 w-[600px] h-[600px] bg-blue-600/10 rounded-full blur-[160px] pointer-events-none" />
-      <div className="absolute bottom-10 right-10 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[170px] pointer-events-none" />
+    <div className="min-h-screen bg-[#050814] text-slate-100 flex flex-col justify-between px-4 sm:px-8 lg:px-14 py-6 relative overflow-hidden font-sans selection:bg-blue-600 selection:text-white">
+      {/* Background ambient lighting matching login theme */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-blue-600/12 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute -bottom-36 -left-36 w-[560px] h-[560px] rounded-full border border-blue-500/20 bg-gradient-to-tr from-blue-600/20 via-sky-500/5 to-transparent blur-xl pointer-events-none" />
+      
+      {/* Luminous orbital arc in bottom-left corner */}
+      <svg className="absolute -bottom-16 -left-16 w-[450px] h-[450px] pointer-events-none opacity-30" viewBox="0 0 400 400" fill="none">
+        <path d="M 0 400 A 360 360 0 0 1 360 40" stroke="url(#demoArcBlueGrad)" strokeWidth="2.5" />
+        <defs>
+          <linearGradient id="demoArcBlueGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.8" />
+            <stop offset="60%" stopColor="#2563eb" stopOpacity="0.4" />
+            <stop offset="100%" stopColor="#4f46e5" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+      </svg>
+
+      {/* Bottom-right ambient aura */}
+      <div className="absolute -bottom-28 -right-28 w-[450px] h-[450px] bg-blue-600/10 rounded-full blur-[120px] pointer-events-none" />
 
       {/* Header */}
       <header className="flex items-center justify-between z-20 mb-6 max-w-7xl mx-auto w-full">
@@ -413,7 +428,7 @@ export const LiveDemoPage: React.FC = () => {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xl font-bold text-white tracking-tight">Samvada</span>
+              <span className="text-xl font-bold text-white tracking-tight">Samvada AI</span>
               <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold tracking-wider uppercase">
                 Interactive Demo
               </span>
@@ -765,7 +780,7 @@ export const LiveDemoPage: React.FC = () => {
       <footer className="z-10 mt-6 pt-6 border-t border-zinc-900 max-w-7xl mx-auto w-full">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-            Powered by Samvada Voice Neural Core 3.0
+            Powered by Samvada AI Voice Neural Core 3.0
           </p>
           <div className="flex items-center gap-4 text-xs text-zinc-400">
             <Link to="/register" className="hover:text-white transition-colors">Create Free Account</Link>

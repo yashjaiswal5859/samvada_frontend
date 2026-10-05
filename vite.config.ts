@@ -1,7 +1,6 @@
 import { defineConfig, Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import { execSync } from 'child_process';
 
 // Middleware to detect unauthenticated requests on protected routes and 302 redirect to /login
 function authRedirectPlugin(): Plugin {
@@ -10,29 +9,6 @@ function authRedirectPlugin(): Plugin {
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
         const url = req.url ? req.url.split('?')[0] : '';
-
-        // Development helper endpoint: fetch latest real OTP from postgres outbox_events
-        if (url === '/api/dev/latest-otp') {
-          try {
-            const output = execSync(
-              `docker exec samvada-postgres psql -U samvada -d samvada_auth -t -c "SELECT payload FROM outbox_events WHERE event_type = 'OTPRequested' ORDER BY created_at DESC LIMIT 1;"`
-            ).toString();
-            const jsonMatch = output.match(/\{[^}]+\}/);
-            if (jsonMatch) {
-              const parsed = JSON.parse(jsonMatch[0]);
-              res.writeHead(200, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify({ success: true, otp: parsed.otp, email: parsed.email }));
-              return;
-            }
-          } catch (e: any) {
-            res.writeHead(500, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ success: false, error: e?.message || 'Failed to read OTP' }));
-            return;
-          }
-          res.writeHead(404, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ success: false, error: 'OTP not found' }));
-          return;
-        }
 
         // Bypass static assets, Vite internal HMR/scripts, API proxies, and files with extensions
         if (

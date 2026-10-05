@@ -126,7 +126,7 @@ export const GettingStartedPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-            <span>Welcome to Samvada!</span>
+            <span>Welcome to Samvada AI!</span>
             <span>👋</span>
           </h1>
           <p className="text-sm text-zinc-400 mt-0.5">
@@ -203,7 +203,7 @@ export const GettingStartedPage: React.FC = () => {
           <div>
             <h3 className="text-base font-bold text-white">Recommended Setup Steps</h3>
             <p className="text-xs text-zinc-400 mt-0.5 mb-4">
-              Follow these steps to get the most out of Samvada.
+              Follow these steps to get the most out of Samvada AI.
             </p>
 
             <div className="relative pl-6 space-y-4">
@@ -348,7 +348,7 @@ export const GettingStartedPage: React.FC = () => {
 
           {/* Join Discord Community Card */}
           <div className="bg-gradient-to-br from-[#181c32] to-[#0d1222] border border-indigo-500/30 rounded-2xl p-5 shadow-lg relative overflow-hidden">
-            <h3 className="text-xs font-bold text-white tracking-tight">Join the Samvada Community</h3>
+            <h3 className="text-xs font-bold text-white tracking-tight">Join the Samvada AI Community</h3>
             <p className="text-[11px] text-zinc-400 mt-1 mb-4">
               Connect with other builders, share ideas, and get help.
             </p>
@@ -371,7 +371,7 @@ export const GettingStartedPage: React.FC = () => {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-base font-bold text-white">Explore Key Features</h3>
-            <p className="text-xs text-zinc-400 mt-0.5">Discover what you can do with Samvada.</p>
+            <p className="text-xs text-zinc-400 mt-0.5">Discover what you can do with Samvada AI.</p>
           </div>
           <button
             onClick={() => navigate('/agents')}

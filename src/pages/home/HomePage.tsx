@@ -38,7 +38,7 @@ export const HomePage: React.FC = () => {
         <div className="space-y-2">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold mb-2">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Samvada Voice Agent Studio</span>
+            <span>Samvada AI Voice Agent Studio</span>
           </div>
           <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-white">
             Welcome back, <span className="text-indigo-400">{fullName}</span>!

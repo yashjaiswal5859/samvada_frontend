@@ -24,6 +24,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { getBillingUsage, getWalletBalance, topupWallet } from '../../api/settings';
 import { BillingUsage, OrganizationWallet } from '../../types';
 import { formatDate } from '../../utils/formatters';
+import { SettingsNav } from '../../components/layout/SettingsNav';
 
 export const BillingUsagePage: React.FC = () => {
   const toast = useToast();
@@ -81,41 +82,24 @@ export const BillingUsagePage: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-12 animate-fade-in">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Billing & Usage</h1>
-          <p className="text-xs sm:text-sm text-zinc-400 mt-0.5">
-            Manage your subscription plan, voice minutes usage, wallet balance, and invoices.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => handleTopup()}
-            disabled={isToppingUp}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-semibold shadow-md shadow-blue-600/25 transition-all cursor-pointer"
-          >
-            <Coins className="w-3.5 h-3.5" />
-            <span>{isToppingUp ? 'Adding Credit...' : 'Add $10.00 Credit'}</span>
-          </button>
-        </div>
-      </div>
+      <SettingsNav
+        title="Billing & Credits"
+        subtitle="Manage your subscription plan, voice minutes usage, wallet balance, and transaction invoices."
+      />
 
-      {/* Tabs Navigation */}
-      <div className="flex items-center gap-6 border-b border-zinc-800 text-xs font-medium">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`pb-3 transition-colors relative cursor-pointer ${
-              activeTab === tab.id
-                ? 'text-blue-400 font-semibold border-b-2 border-blue-500'
-                : 'text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+      <div className="flex items-center justify-between pt-1">
+        <div>
+          <h2 className="text-base font-bold text-white">Subscription & Usage Summary</h2>
+          <p className="text-xs text-zinc-400">Real-time credit balance and minute consumption.</p>
+        </div>
+        <button
+          onClick={() => handleTopup()}
+          disabled={isToppingUp}
+          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-semibold shadow-md shadow-blue-600/25 transition-all cursor-pointer"
+        >
+          <Coins className="w-3.5 h-3.5" />
+          <span>{isToppingUp ? 'Adding Credit...' : 'Add $10.00 Credit'}</span>
+        </button>
       </div>
 
       {isLoading ? (

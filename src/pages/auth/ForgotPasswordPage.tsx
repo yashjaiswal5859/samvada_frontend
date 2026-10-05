@@ -32,10 +32,25 @@ export const ForgotPasswordPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#06080e] text-slate-100 flex flex-col justify-between px-6 lg:px-14 py-8 relative overflow-hidden font-sans selection:bg-blue-600 selection:text-white">
-      {/* Glow effects */}
-      <div className="absolute top-1/4 left-10 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute bottom-10 right-1/4 w-[400px] h-[400px] bg-indigo-600/10 rounded-full blur-[160px] pointer-events-none" />
+    <div className="min-h-screen bg-[#050814] text-slate-100 flex flex-col justify-between px-6 lg:px-14 py-8 relative overflow-hidden font-sans selection:bg-blue-600 selection:text-white">
+      {/* Background ambient lighting effects matching login theme */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-blue-600/12 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute -bottom-36 -left-36 w-[560px] h-[560px] rounded-full border border-blue-500/20 bg-gradient-to-tr from-blue-600/20 via-sky-500/5 to-transparent blur-xl pointer-events-none" />
+      
+      {/* Luminous orbital arc in bottom-left corner */}
+      <svg className="absolute -bottom-16 -left-16 w-[450px] h-[450px] pointer-events-none opacity-40" viewBox="0 0 400 400" fill="none">
+        <path d="M 0 400 A 360 360 0 0 1 360 40" stroke="url(#forgotArcBlueGrad)" strokeWidth="2.5" />
+        <defs>
+          <linearGradient id="forgotArcBlueGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.8" />
+            <stop offset="60%" stopColor="#2563eb" stopOpacity="0.4" />
+            <stop offset="100%" stopColor="#4f46e5" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+      </svg>
+
+      {/* Bottom-right ambient aura */}
+      <div className="absolute -bottom-28 -right-28 w-[450px] h-[450px] bg-blue-600/10 rounded-full blur-[120px] pointer-events-none" />
 
       {/* Top Header */}
       <header className="flex items-center justify-between z-20 mb-4 max-w-7xl mx-auto w-full">
@@ -48,7 +63,7 @@ export const ForgotPasswordPage: React.FC = () => {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xl font-bold text-white tracking-tight">Samvada</span>
+              <span className="text-xl font-bold text-white tracking-tight">Samvada AI</span>
             </div>
             <p className="text-[11px] text-zinc-400 leading-none mt-0.5">Voice AI for a more human world</p>
           </div>
@@ -309,7 +324,7 @@ export const ForgotPasswordPage: React.FC = () => {
           <a href="#" className="hover:text-zinc-400 transition-colors">Privacy Policy</a>
           <a href="#" className="hover:text-zinc-400 transition-colors">Contact Us</a>
         </div>
-        <p>© 2026 Samvada. All rights reserved.</p>
+        <p>© 2026 Samvada AI. All rights reserved.</p>
       </footer>
     </div>
   );

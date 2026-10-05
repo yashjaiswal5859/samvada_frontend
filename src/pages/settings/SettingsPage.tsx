@@ -22,6 +22,7 @@ import {
 import { useToast } from '../../contexts/ToastContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { CustomSelect } from '../../components/ui/CustomSelect';
+import { SettingsNav } from '../../components/layout/SettingsNav';
 
 export const SettingsPage: React.FC = () => {
   const { user } = useAuth();
@@ -44,16 +45,6 @@ export const SettingsPage: React.FC = () => {
     }
   }, [user]);
 
-  const tabs = [
-    { label: 'General', path: '/settings', active: true },
-    { label: 'Voice & Telephony', path: '/telephony', active: false },
-    { label: 'Team & Access', path: '/settings/team', active: false },
-    { label: 'Integrations', path: '/integrations', active: false },
-    { label: 'Security', path: '/settings/security', active: false },
-    { label: 'Billing', path: '/settings/billing', active: false },
-    { label: 'Notifications', path: '/notifications', active: false }
-  ];
-
   const handleSave = () => {
     toast.success('Settings Saved', 'Organization profile & workspace preferences updated.');
   };
@@ -68,30 +59,10 @@ export const SettingsPage: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Top Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-white tracking-tight">Settings</h1>
-        <p className="text-sm text-zinc-400 mt-0.5">
-          Manage your organization, preferences, and platform configuration.
-        </p>
-      </div>
-
-      {/* Tabs Navigation */}
-      <div className="flex items-center gap-6 border-b border-zinc-800 text-xs font-medium overflow-x-auto">
-        {tabs.map((tab) => (
-          <NavLink
-            key={tab.label}
-            to={tab.path}
-            className={`pb-3 whitespace-nowrap transition-colors relative ${
-              tab.active
-                ? 'text-blue-400 font-semibold border-b-2 border-blue-500'
-                : 'text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            {tab.label}
-          </NavLink>
-        ))}
-      </div>
+      <SettingsNav
+        title="Workspace Settings"
+        subtitle="Manage your organization profile, language, regional settings, and platform preferences."
+      />
 
       {/* Main Grid: Left Settings Form, Right Overview & Danger Zone */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

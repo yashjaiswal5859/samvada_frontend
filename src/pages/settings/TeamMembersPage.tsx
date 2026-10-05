@@ -20,6 +20,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { getTeamMembers, inviteTeamMember } from '../../api/settings';
 import { TeamMember } from '../../types';
+import { SettingsNav } from '../../components/layout/SettingsNav';
 
 export const TeamMembersPage: React.FC = () => {
   const { user } = useAuth();
@@ -137,15 +138,10 @@ export const TeamMembersPage: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-12 animate-fade-in">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Team & Access</h1>
-          <p className="text-xs sm:text-sm text-zinc-400 mt-1">
-            Manage who has access to your workspace, assign roles, and invite collaborators.
-          </p>
-        </div>
-      </div>
+      <SettingsNav
+        title="Team Members & Access"
+        subtitle="Manage who has access to your workspace, assign roles, and invite collaborators."
+      />
 
       {/* 3 Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

@@ -119,7 +119,7 @@ export const VerifyEmailPage: React.FC = () => {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xl font-bold text-white tracking-tight">Samvada</span>
+              <span className="text-xl font-bold text-white tracking-tight">Samvada AI</span>
             </div>
             <p className="text-[11px] text-zinc-400 leading-none mt-0.5">Voice AI for a more human world</p>
           </div>
@@ -152,7 +152,7 @@ export const VerifyEmailPage: React.FC = () => {
               </span>
             </h1>
             <p className="text-sm text-zinc-400 mt-3 leading-relaxed">
-              Verify your email to activate your Samvada account and start building amazing voice experiences.
+              Verify your email to activate your Samvada AI account and start building amazing voice experiences.
             </p>
           </div>
 
@@ -183,7 +183,7 @@ export const VerifyEmailPage: React.FC = () => {
               </div>
               <div>
                 <h4 className="text-xs font-semibold text-white">Join a growing community</h4>
-                <p className="text-[11px] text-zinc-400 mt-0.5">Build, automate, and scale with Samvada</p>
+                <p className="text-[11px] text-zinc-400 mt-0.5">Build, automate, and scale with Samvada AI</p>
               </div>
             </div>
           </div>
@@ -364,7 +364,7 @@ export const VerifyEmailPage: React.FC = () => {
           <a href="#" className="hover:text-zinc-400 transition-colors">Privacy Policy</a>
           <a href="#" className="hover:text-zinc-400 transition-colors">Contact Us</a>
         </div>
-        <p>© 2026 Samvada. All rights reserved.</p>
+        <p>© 2026 Samvada AI. All rights reserved.</p>
       </footer>
     </div>
   );

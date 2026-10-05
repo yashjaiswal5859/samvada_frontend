@@ -27,6 +27,7 @@ import { getCallRecords } from '../../api/calls';
 import { getAnalyticsSummary } from '../../api/analytics';
 import { CallRecord, AnalyticsSummary } from '../../types';
 import { formatDuration, formatDate } from '../../utils/formatters';
+import { CallsNav } from '../../components/layout/CallsNav';
 
 interface LiveCallItem {
   id: string;
@@ -123,38 +124,31 @@ export const LiveCallConsolePage: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in pb-8">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-xs text-zinc-400 mb-1">
-            <span>{organizationName || 'Samvada Platform'}</span>
-            <span>/</span>
-            <span className="text-blue-400 font-medium">{currentWorkspace.name}</span>
-            <span className="text-zinc-600">•</span>
-            <span className="font-mono text-zinc-500">{currentWorkspace.id}</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight flex items-center gap-3">
-            <span>Live Calls</span>
-            <span className={`w-2.5 h-2.5 rounded-full ${activeCallsCount > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-600'}`} />
-          </h1>
-          <p className="text-xs sm:text-sm text-zinc-400 mt-1">
-            Monitoring voice conversations in real time for <strong>{currentWorkspace.name}</strong>.
-          </p>
+      <CallsNav
+        title="Live Calls Monitor"
+        subtitle={`Real-time voice stream supervision and caller analytics for ${currentWorkspace.name}.`}
+      />
+
+      {/* Sub-bar with workspace tag & actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+        <div className="flex items-center gap-2 text-xs text-zinc-400">
+          <span>Active Workspace:</span>
+          <span className="text-blue-400 font-semibold">{currentWorkspace.name}</span>
+          <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+            activeCallsCount > 0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-zinc-800 text-zinc-400'
+          }`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${activeCallsCount > 0 ? 'bg-emerald-400 animate-ping' : 'bg-zinc-500'}`} />
+            {activeCallsCount} Active Stream{activeCallsCount !== 1 ? 's' : ''}
+          </span>
         </div>
-        <div className="flex items-center gap-2.5 self-start sm:self-auto">
-          <button
-            onClick={() => navigate('/calls')}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-zinc-700 bg-zinc-900/60 hover:bg-zinc-800 text-zinc-200 text-xs font-semibold transition-all cursor-pointer"
-          >
-            <History className="w-3.5 h-3.5" />
-            <span>Call Logs</span>
-          </button>
+
+        <div className="flex items-center gap-2.5">
           <button
             onClick={() => navigate('/demo')}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-lg shadow-blue-600/25 transition-all cursor-pointer"
+            className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-md shadow-blue-600/20 transition-all cursor-pointer"
           >
             <Phone className="w-3.5 h-3.5" />
-            <span>Make Test Call</span>
+            <span>Launch Live Demo Agent</span>
           </button>
         </div>
       </div>

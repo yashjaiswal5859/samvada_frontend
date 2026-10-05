@@ -18,6 +18,7 @@ import {
 import { useToast } from '../../contexts/ToastContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { CustomSelect } from '../../components/ui/CustomSelect';
+import { SettingsNav } from '../../components/layout/SettingsNav';
 import { getUserProfile, updateUserProfile, uploadAvatar, exportUserData, deleteUserData } from '../../api/settings';
 
 export const ProfileSettingsPage: React.FC = () => {
@@ -64,17 +65,6 @@ export const ProfileSettingsPage: React.FC = () => {
       }
     });
   }, [user]);
-
-  const tabs = [
-    { label: 'Profile', path: '/settings/profile', active: true },
-    { label: 'Workspace', path: '/settings', active: false },
-    { label: 'Security', path: '/settings/security', active: false },
-    { label: 'Audit Logs', path: '/settings/audit-logs', active: false },
-    { label: 'Notifications', path: '/notifications', active: false },
-    { label: 'Preferences', path: '/settings', active: false },
-    { label: 'API & Webhooks', path: '/integrations', active: false },
-    { label: 'Plan & Billing', path: '/settings/billing', active: false }
-  ];
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -157,30 +147,10 @@ export const ProfileSettingsPage: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Top Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-white tracking-tight">Settings</h1>
-        <p className="text-sm text-zinc-400 mt-0.5">
-          Manage your account, preferences, security, and workspace settings.
-        </p>
-      </div>
-
-      {/* Tabs Navigation */}
-      <div className="flex items-center gap-6 border-b border-zinc-800 text-xs font-medium overflow-x-auto">
-        {tabs.map((tab) => (
-          <NavLink
-            key={tab.label}
-            to={tab.path}
-            className={`pb-3 whitespace-nowrap transition-colors relative ${
-              tab.active
-                ? 'text-blue-400 font-semibold border-b-2 border-blue-500'
-                : 'text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            {tab.label}
-          </NavLink>
-        ))}
-      </div>
+      <SettingsNav
+        title="Personal Profile"
+        subtitle="Update your personal details, display name, avatar, and contact preferences."
+      />
 
       {/* Main Grid: Left Profile Form, Right Account Overview & Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

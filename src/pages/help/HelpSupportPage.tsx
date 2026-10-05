@@ -97,7 +97,7 @@ export const HelpSupportPage: React.FC = () => {
       icon: <Lightbulb className="w-5 h-5 text-purple-400" />,
       iconBg: 'bg-purple-600/15 border-purple-500/30',
       title: 'Best Practices',
-      desc: 'Tips to get the most out of Samvada',
+      desc: 'Tips to get the most out of Samvada AI',
       count: 20
     }
   ];
@@ -109,7 +109,7 @@ export const HelpSupportPage: React.FC = () => {
     },
     {
       q: 'Which telephony providers are supported?',
-      a: 'Samvada supports major phone networks, VoIP systems, and browser calls with crystal-clear audio and instant response times.'
+      a: 'Samvada AI supports major phone networks, VoIP systems, and browser calls with crystal-clear audio and instant response times.'
     },
     {
       q: 'How does billing work?',
@@ -121,7 +121,7 @@ export const HelpSupportPage: React.FC = () => {
     },
     {
       q: 'What languages are supported?',
-      a: 'Samvada supports English (US, UK, Indian accents), Hindi, Hinglish, Spanish, French, and 40+ global languages.'
+      a: 'Samvada AI supports English (US, UK, Indian accents), Hindi, Hinglish, Spanish, French, and 40+ global languages.'
     },
     {
       q: 'How do I handle call failures or retries?',
@@ -425,7 +425,7 @@ export const HelpSupportPage: React.FC = () => {
                 <Send className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-white">Contact Samvada Support</h3>
+                <h3 className="text-base font-bold text-white">Contact Samvada AI Support</h3>
                 <p className="text-xs text-zinc-400">We usually respond within 2-4 hours.</p>
               </div>
             </div>

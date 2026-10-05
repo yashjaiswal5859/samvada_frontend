@@ -52,7 +52,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenCreateAgent }) => {
   };
 
   return (
-    <header className="h-16 border-b border-zinc-800/80 bg-[#080b11] sticky top-0 z-40 px-6 flex items-center justify-between gap-4 select-none">
+    <header className="h-16 border-b border-blue-900/30 bg-[#060a16]/90 backdrop-blur-xl sticky top-0 z-40 px-6 flex items-center justify-between gap-4 select-none">
       {/* Search Input Bar */}
       <div className="relative flex-1 max-w-xl">
         <Search className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2" />

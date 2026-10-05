@@ -21,6 +21,7 @@ import { getCampaigns } from '../../api/campaigns';
 import { AnalyticsSummary, Agent, Campaign } from '../../types';
 import { formatDuration } from '../../utils/formatters';
 import { useNavigate } from 'react-router-dom';
+import { CallsNav } from '../../components/layout/CallsNav';
 
 export const AnalyticsPage: React.FC = () => {
   const toast = useToast();
@@ -76,17 +77,18 @@ export const AnalyticsPage: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in pb-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Analytics</h1>
-          <p className="text-xs sm:text-sm text-zinc-400 mt-1">
-            Real-time telemetry and reporting on voice campaigns, agent outcomes, and conversion rates.
-          </p>
-        </div>
+      <CallsNav
+        title="Voice Analytics & Reports"
+        subtitle="Real-time telemetry and reporting on voice campaigns, agent outcomes, and conversion rates."
+      />
 
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+        <div>
+          <h2 className="text-base font-bold text-white">Performance Overview</h2>
+          <p className="text-xs text-zinc-400">Aggregated metric volume across connected telephony streams.</p>
+        </div>
         <div className="flex items-center gap-2 self-start sm:self-auto">
-          <div className="w-36 shrink-0">
+          <div className="w-40 shrink-0">
             <CustomSelect
               value={timeRange}
               onChange={setTimeRange}

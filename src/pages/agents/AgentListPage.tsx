@@ -192,19 +192,26 @@ export const AgentListPage: React.FC = () => {
             Manage voice agents operating inside the <strong>{currentWorkspace.name}</strong> workspace.
           </p>
         </div>
-        <div className="flex items-center gap-3 self-start sm:self-auto">
+        <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
           <button
             onClick={() => navigate('/ai-studio')}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-sm font-semibold shadow-lg shadow-blue-600/25 transition-all cursor-pointer border border-blue-400/30 active:scale-[0.985]"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-semibold shadow-lg shadow-blue-600/25 transition-all cursor-pointer border border-blue-400/30 active:scale-[0.985]"
           >
-            <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
-            <span>Create with AI Chat</span>
+            <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+            <span>Create with AI</span>
+          </button>
+          <button
+            onClick={() => navigate('/demo')}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 hover:text-emerald-300 text-xs font-semibold border border-emerald-500/30 transition-all cursor-pointer active:scale-[0.985]"
+          >
+            <Phone className="w-3.5 h-3.5" />
+            <span>Test in Live Demo</span>
           </button>
           <button
             onClick={() => navigate('/agents/create')}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white text-sm font-semibold border border-zinc-700/80 transition-all cursor-pointer active:scale-[0.985]"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-zinc-850 hover:bg-zinc-800 text-zinc-200 hover:text-white text-xs font-semibold border border-zinc-750 transition-all cursor-pointer active:scale-[0.985]"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-3.5 h-3.5" />
             <span>Manual Setup</span>
           </button>
         </div>

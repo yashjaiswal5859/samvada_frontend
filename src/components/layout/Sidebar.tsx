@@ -28,7 +28,8 @@ import {
   Layers,
   Shield,
   Plus,
-  Lock
+  Lock,
+  PhoneCall
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -70,7 +71,7 @@ export const Sidebar: React.FC = () => {
 
   return (
     <aside
-      className={`bg-[#080b11] border-r border-zinc-800/70 flex flex-col justify-between h-screen sticky top-0 shrink-0 select-none transition-all duration-200 z-30 ${
+      className={`bg-[#060a16]/95 backdrop-blur-xl border-r border-blue-900/30 flex flex-col justify-between h-screen sticky top-0 shrink-0 select-none transition-all duration-200 z-30 ${
         isCollapsed ? 'w-18' : 'w-68'
       }`}
     >
@@ -86,7 +87,7 @@ export const Sidebar: React.FC = () => {
                 <div className="w-1 h-2 bg-blue-600 rounded-full" />
               </div>
               <div className="leading-tight overflow-hidden">
-                <span className="font-extrabold text-white text-base tracking-tight block">Samvada</span>
+                <span className="font-extrabold text-white text-base tracking-tight block">Samvada AI</span>
                 <span className="text-[10px] text-zinc-400 font-medium block -mt-0.5">{organizationName} Voice Platform</span>
               </div>
             </NavLink>
@@ -253,9 +254,7 @@ export const Sidebar: React.FC = () => {
                 </>
               )}
             </NavLink>
-          </div>
-
-          {/* ========================================================================= */}
+          </div>          {/* ========================================================================= */}
           {/* GROUP 1: VOICE AGENTS */}
           {/* ========================================================================= */}
           <div className="space-y-1">
@@ -281,7 +280,7 @@ export const Sidebar: React.FC = () => {
                 <>
                   {isActive && <span className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-blue-500 rounded-r-md" />}
                   <Sparkles className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
-                  {!isCollapsed && <span>Create with AI Chat</span>}
+                  {!isCollapsed && <span>Create with AI</span>}
                 </>
               )}
             </NavLink>
@@ -342,41 +341,43 @@ export const Sidebar: React.FC = () => {
                 </>
               )}
             </NavLink>
-
-            {/* Connected Tools */}
-            <NavLink to="/integrations" className={linkClass} title="Connected Tools">
-              {({ isActive }) => (
-                <>
-                  {isActive && <span className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-blue-500 rounded-r-md" />}
-                  <Boxes className="w-4 h-4 shrink-0" />
-                  {!isCollapsed && <span>Connected Tools</span>}
-                </>
-              )}
-            </NavLink>
           </div>
 
           {/* ========================================================================= */}
-          {/* GROUP 2: PHONE & CAMPAIGNS */}
+          {/* GROUP 2: CALLS & OUTREACH */}
           {/* ========================================================================= */}
           <div className="space-y-1">
             {!isCollapsed && (
               <div className="px-3 pt-2 pb-1 text-[10px] font-bold text-zinc-400 tracking-wider uppercase">
-                PHONE & CAMPAIGNS
+                CALLS & OUTREACH
               </div>
             )}
 
-            {/* Phone Numbers */}
-            <NavLink to="/telephony" className={linkClass} title="Phone Numbers">
+            {/* Call History (Recordings & Transcripts) */}
+            <NavLink to="/calls" className={linkClass} title="Call History">
               {({ isActive }) => (
                 <>
                   {isActive && <span className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-blue-500 rounded-r-md" />}
-                  <Phone className="w-4 h-4 shrink-0" />
+                  <PhoneCall className="w-4 h-4 shrink-0 text-blue-400" />
+                  {!isCollapsed && <span>Call History</span>}
+                </>
+              )}
+            </NavLink>
+
+            {/* Live Calls Monitor */}
+            <NavLink to="/calls/live" className={linkClass} title="Live Calls Monitor">
+              {({ isActive }) => (
+                <>
+                  {isActive && <span className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-blue-500 rounded-r-md" />}
+                  <Radio className="w-4 h-4 shrink-0 text-emerald-400" />
                   {!isCollapsed && (
                     <div className="flex items-center justify-between flex-1">
-                      <span>Phone Numbers</span>
-                      <span className="text-[10px] text-zinc-400 font-mono">
-                        {currentWorkspace.assignedPhoneNumbers.length}
-                      </span>
+                      <span>Live Monitor</span>
+                      {currentWorkspace.liveCallsCount > 0 && (
+                        <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold font-mono animate-pulse">
+                          {currentWorkspace.liveCallsCount} Active
+                        </span>
+                      )}
                     </div>
                   )}
                 </>
@@ -404,37 +405,35 @@ export const Sidebar: React.FC = () => {
                 </>
               )}
             </NavLink>
-          </div>
 
-          {/* ========================================================================= */}
-          {/* GROUP 3: CALLS & ACTIVITY (Workspace Isolated) */}
-          {/* ========================================================================= */}
-          <div className="space-y-1">
-            {!isCollapsed && (
-              <div className="px-3 pt-2 pb-1 text-[10px] font-bold text-zinc-400 tracking-wider uppercase">
-                CALLS & ACTIVITY
-              </div>
-            )}
-
-            {/* Live Calls */}
-            <NavLink to="/calls/live" className={linkClass} title="Live Calls">
+            {/* Phone Numbers */}
+            <NavLink to="/telephony" className={linkClass} title="Phone Numbers">
               {({ isActive }) => (
                 <>
                   {isActive && <span className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-blue-500 rounded-r-md" />}
-                  <Radio className="w-4 h-4 shrink-0 text-emerald-400" />
+                  <Phone className="w-4 h-4 shrink-0" />
                   {!isCollapsed && (
                     <div className="flex items-center justify-between flex-1">
-                      <span>Live Calls</span>
-                      {currentWorkspace.liveCallsCount > 0 && (
-                        <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold font-mono animate-pulse">
-                          {currentWorkspace.liveCallsCount} Active
-                        </span>
-                      )}
+                      <span>Phone Numbers</span>
+                      <span className="text-[10px] text-zinc-400 font-mono">
+                        {currentWorkspace.assignedPhoneNumbers.length}
+                      </span>
                     </div>
                   )}
                 </>
               )}
             </NavLink>
+          </div>
+
+          {/* ========================================================================= */}
+          {/* GROUP 3: PLATFORM & SYSTEM */}
+          {/* ========================================================================= */}
+          <div className="space-y-1">
+            {!isCollapsed && (
+              <div className="px-3 pt-2 pb-1 text-[10px] font-bold text-zinc-400 tracking-wider uppercase">
+                PLATFORM & SETTINGS
+              </div>
+            )}
 
             {/* Analytics & Reports */}
             <NavLink to="/analytics" className={linkClass} title="Reports & Analytics">
@@ -442,103 +441,71 @@ export const Sidebar: React.FC = () => {
                 <>
                   {isActive && <span className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-blue-500 rounded-r-md" />}
                   <BarChart3 className="w-4 h-4 shrink-0" />
-                  {!isCollapsed && <span>Call Reports</span>}
+                  {!isCollapsed && <span>Reports & Analytics</span>}
                 </>
               )}
             </NavLink>
 
-            {/* Notifications */}
-            <NavLink to="/notifications" className={linkClass} title="Alerts & Notifications">
+            {/* Connected Tools & Integrations */}
+            <NavLink to="/integrations" className={linkClass} title="Connected Tools & APIs">
               {({ isActive }) => (
                 <>
                   {isActive && <span className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-blue-500 rounded-r-md" />}
-                  <Bell className="w-4 h-4 shrink-0" />
-                  {!isCollapsed && <span>Notifications</span>}
+                  <Boxes className="w-4 h-4 shrink-0" />
+                  {!isCollapsed && <span>Integrations</span>}
                 </>
               )}
             </NavLink>
-          </div>
 
-          {/* ========================================================================= */}
-          {/* GROUP 4: SYSTEM SETTINGS (Admin Only - Swiggy Admin) */}
-          {/* ========================================================================= */}
-          {isOrgAdmin && (
-            <div className="space-y-1 pt-2 border-t border-zinc-850">
-              {!isCollapsed && (
-                <div className="px-3 pt-2 pb-1 text-[10px] font-bold text-blue-400 tracking-wider uppercase flex items-center justify-between">
-                  <span>SYSTEM SETTINGS</span>
-                  <span className="text-[9px] font-mono bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/20">
-                    ADMIN
-                  </span>
-                </div>
+            {/* Workspaces Management */}
+            <NavLink to="/workspaces" className={linkClass} title="Workspaces Management">
+              {({ isActive }) => (
+                <>
+                  {isActive && <span className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-blue-500 rounded-r-md" />}
+                  <Layers className="w-4 h-4 shrink-0 text-blue-400" />
+                  {!isCollapsed && (
+                    <div className="flex items-center justify-between flex-1">
+                      <span>Workspaces</span>
+                      <span className="text-[10px] font-bold bg-zinc-800 text-zinc-300 px-1.5 py-0.5 rounded-full">
+                        {allWorkspaces.length}
+                      </span>
+                    </div>
+                  )}
+                </>
               )}
+            </NavLink>
 
-              {/* Workspaces Management */}
-              <NavLink to="/workspaces" className={linkClass} title="Workspaces Management">
-                {({ isActive }) => (
+            {/* Platform Settings */}
+            <NavLink
+              to="/settings"
+              className={({ isActive }) =>
+                linkClass({
+                  isActive:
+                    isActive ||
+                    window.location.pathname.startsWith('/settings') ||
+                    window.location.pathname.startsWith('/notifications')
+                })
+              }
+              title="Platform Settings"
+            >
+              {({ isActive }) => {
+                const isSettingsActive =
+                  isActive ||
+                  window.location.pathname.startsWith('/settings') ||
+                  window.location.pathname.startsWith('/notifications');
+                return (
                   <>
-                    {isActive && <span className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-blue-500 rounded-r-md" />}
-                    <Layers className="w-4 h-4 shrink-0 text-blue-400" />
-                    {!isCollapsed && (
-                      <div className="flex items-center justify-between flex-1">
-                        <span>Workspaces</span>
-                        <span className="text-[10px] font-bold bg-zinc-800 text-zinc-300 px-1.5 py-0.5 rounded-full">
-                          {allWorkspaces.length}
-                        </span>
-                      </div>
+                    {isSettingsActive && (
+                      <span className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-blue-500 rounded-r-md" />
                     )}
-                  </>
-                )}
-              </NavLink>
-
-              {/* Organization Settings */}
-              <NavLink to="/settings" className={linkClass} title="Organization Settings">
-                {({ isActive }) => (
-                  <>
-                    {isActive && <span className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-blue-500 rounded-r-md" />}
                     <Settings className="w-4 h-4 shrink-0" />
                     {!isCollapsed && <span>Settings</span>}
                   </>
-                )}
-              </NavLink>
+                );
+              }}
+            </NavLink>
 
-              {/* Organization Members */}
-              <NavLink to="/settings/team" className={linkClass} title="Team Members">
-                {({ isActive }) => (
-                  <>
-                    {isActive && <span className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-blue-500 rounded-r-md" />}
-                    <Users2 className="w-4 h-4 shrink-0" />
-                    {!isCollapsed && <span>Org Members</span>}
-                  </>
-                )}
-              </NavLink>
-
-              {/* Plans & Invoices */}
-              <NavLink to="/settings/billing" className={linkClass} title="Plans & Invoices">
-                {({ isActive }) => (
-                  <>
-                    {isActive && <span className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-blue-500 rounded-r-md" />}
-                    <CreditCard className="w-4 h-4 shrink-0" />
-                    {!isCollapsed && <span>Billing & Credits</span>}
-                  </>
-                )}
-              </NavLink>
-
-              {/* Security & Audit */}
-              <NavLink to="/settings/security" className={linkClass} title="Security & Audit Logs">
-                {({ isActive }) => (
-                  <>
-                    {isActive && <span className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-blue-500 rounded-r-md" />}
-                    <Shield className="w-4 h-4 shrink-0" />
-                    {!isCollapsed && <span>Security & Audit</span>}
-                  </>
-                )}
-              </NavLink>
-            </div>
-          )}
-
-          {/* Help & Support (Always visible) */}
-          <div className="pt-2">
+            {/* Help & Support */}
             <NavLink to="/help" className={linkClass} title="Help & Support">
               {({ isActive }) => (
                 <>

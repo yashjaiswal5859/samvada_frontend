@@ -23,6 +23,7 @@ import {
 import { useToast } from '../../contexts/ToastContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { CustomSelect } from '../../components/ui/CustomSelect';
+import { SettingsNav } from '../../components/layout/SettingsNav';
 
 export const SecuritySettingsPage: React.FC = () => {
   const toast = useToast();
@@ -42,16 +43,6 @@ export const SecuritySettingsPage: React.FC = () => {
 
   const [showQrModal, setShowQrModal] = useState(false);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
-
-  const tabs = [
-    { label: 'Profile', path: '/settings/profile', active: false },
-    { label: 'Workspace', path: '/settings', active: false },
-    { label: 'Security', path: '/settings/security', active: true },
-    { label: 'Notifications', path: '/notifications', active: false },
-    { label: 'Preferences', path: '/settings', active: false },
-    { label: 'API & Webhooks', path: '/integrations', active: false },
-    { label: 'Plan & Billing', path: '/settings/billing', active: false }
-  ];
 
   const handleUpdatePassword = () => {
     if (!currentPassword) {
@@ -77,30 +68,10 @@ export const SecuritySettingsPage: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Top Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-white tracking-tight">Settings</h1>
-        <p className="text-sm text-zinc-400 mt-0.5">
-          Manage your account, preferences, security, and workspace settings.
-        </p>
-      </div>
-
-      {/* Tabs Navigation */}
-      <div className="flex items-center gap-6 border-b border-zinc-800 text-xs font-medium overflow-x-auto">
-        {tabs.map((tab) => (
-          <NavLink
-            key={tab.label}
-            to={tab.path}
-            className={`pb-3 whitespace-nowrap transition-colors relative ${
-              tab.active
-                ? 'text-blue-400 font-semibold border-b-2 border-blue-500'
-                : 'text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            {tab.label}
-          </NavLink>
-        ))}
-      </div>
+      <SettingsNav
+        title="Security & Authentication"
+        subtitle="Manage your password, two-factor authentication (2FA), active login sessions, and workspace security policies."
+      />
 
       {/* Top Hero Security Banner */}
       <div className="rounded-2xl border border-blue-500/20 bg-gradient-to-r from-[#0c1427] via-[#091020] to-[#0d162a] p-5 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl relative overflow-hidden">
