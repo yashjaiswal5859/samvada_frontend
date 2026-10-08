@@ -10,7 +10,7 @@ import { getSessionItem, setSessionItem, SESSION_KEYS } from '../utils/session';
 
 let inMemoryAccessToken: string | null = null;
 let inMemoryRefreshToken: string | null = null;
-let inMemoryWorkspaceId: string | null = getSessionItem(SESSION_KEYS.WORKSPACE_ID) || '44444444-4444-4444-4444-444444444444';
+let inMemoryWorkspaceId: string | null = getSessionItem(SESSION_KEYS.WORKSPACE_ID);
 let inMemoryOrgId: string | null = getSessionItem(SESSION_KEYS.ORG_ID);
 
 export const setAccessToken = (token: string | null) => {
@@ -51,7 +51,7 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   if (inMemoryAccessToken && config.headers) {
     config.headers.Authorization = `Bearer ${inMemoryAccessToken}`;
   }
-  const wsId = inMemoryWorkspaceId || getSessionItem(SESSION_KEYS.WORKSPACE_ID) || '44444444-4444-4444-4444-444444444444';
+  const wsId = inMemoryWorkspaceId || getSessionItem(SESSION_KEYS.WORKSPACE_ID);
   const orgId = inMemoryOrgId || getSessionItem(SESSION_KEYS.ORG_ID);
 
   if (config.headers) {

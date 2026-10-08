@@ -1,7 +1,10 @@
 import { apiClient, getActiveWorkspaceId } from './client';
 import { Agent, CreateAgentPayload, APIEnvelope, CallTicketResponse, AgentVersion } from '../types';
 
-let localAgents: Agent[] = [];
+const requireData = <T,>(success: boolean | undefined, data: T | undefined, operation: string): T => {
+  if (success && data !== undefined && data !== null) return data;
+  throw new Error(`${operation} was not confirmed by the server.`);
+};
 
 const getScopedAgentUrl = (subpath = ''): string => {
   const wsId = getActiveWorkspaceId();
@@ -12,9 +15,8 @@ const getScopedAgentUrl = (subpath = ''): string => {
 };
 
 export const getAgents = async (): Promise<Agent[]> => {
-  try {
-    const res = await apiClient.get<APIEnvelope<any[]>>(getScopedAgentUrl());
-    if (res.data?.success && Array.isArray(res.data.data)) {
+  const res = await apiClient.get<APIEnvelope<any[]>>(getScopedAgentUrl());
+  if (res.data?.success && Array.isArray(res.data.data)) {
       return res.data.data.map((item: any) => ({
         id: item.id,
         name: item.name,
@@ -36,169 +38,53 @@ export const getAgents = async (): Promise<Agent[]> => {
         avgDurationSec: Number(item.avg_duration_sec ?? item.avgDurationSec ?? 0),
         successRate: Number(item.success_rate ?? item.successRate ?? 0),
       }));
-    }
-  } catch (err) {
-    console.warn('API unavailable, returning local agents', err);
   }
-  return localAgents;
+  throw new Error('Agent list was not confirmed by the server.');
 };
 
 export const getAgentById = async (id: string): Promise<Agent | undefined> => {
-  try {
-    const res = await apiClient.get<APIEnvelope<Agent>>(getScopedAgentUrl(`/${id}`));
-    if (res.data?.success && res.data.data) {
-      return res.data.data;
-    }
-  } catch (err) {
-    console.warn('API unavailable, falling back to local agent lookup', err);
-  }
-  return localAgents.find((a) => a.id === id);
+  const res = await apiClient.get<APIEnvelope<Agent>>(getScopedAgentUrl(`/${id}`));
+  if (!res.data?.success) return undefined;
+  return res.data.data;
 };
 
+export const getAgent = getAgentById;
+
 export const createAgent = async (payload: CreateAgentPayload): Promise<Agent> => {
-  try {
-    const res = await apiClient.post<APIEnvelope<Agent>>(getScopedAgentUrl(), payload);
-    if (res.data?.success && res.data.data) {
-      localAgents.unshift(res.data.data);
-      return res.data.data;
-    }
-  } catch (err) {
-    console.warn('API unavailable, creating agent locally', err);
-  }
-
-  const newAgent: Agent = {
-    id: `agent-${Date.now()}`,
-    name: payload.name,
-    role: payload.role,
-    description: payload.description || 'Custom configured voice assistant.',
-    systemPrompt: payload.systemPrompt || `You are ${payload.name}, a helpful AI voice assistant.`,
-    voiceId: payload.voiceId,
-    voiceName: 'Selected Voice',
-    language: payload.language || 'English (US)',
-    model: payload.model || 'gpt-4o',
-    status: 'active',
-    phoneNumber: '+1 (800) ' + Math.floor(100 + Math.random() * 900) + '-' + Math.floor(1000 + Math.random() * 9000),
-    knowledgeBaseIds: [],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    totalCalls: 0,
-    avgDurationSec: 0,
-    successRate: 100,
-  };
-
-  localAgents.unshift(newAgent);
-  return newAgent;
+  const res = await apiClient.post<APIEnvelope<Agent>>(getScopedAgentUrl(), payload);
+  return requireData(res.data?.success, res.data?.data, 'Creating agent');
 };
 
 export const updateAgent = async (id: string, updates: Partial<Agent>): Promise<Agent> => {
-  try {
-    const res = await apiClient.patch<APIEnvelope<Agent>>(getScopedAgentUrl(`/${id}`), updates);
-    if (res.data?.success && res.data.data) {
-      localAgents = localAgents.map((a) => (a.id === id ? res.data.data! : a));
-      return res.data.data;
-    }
-  } catch (err) {
-    console.warn('API update failed, updating local state', err);
-  }
-
-  localAgents = localAgents.map((a) => (a.id === id ? { ...a, ...updates, updatedAt: new Date().toISOString() } : a));
-  const found = localAgents.find((a) => a.id === id);
-  if (!found) throw new Error('Agent not found');
-  return found;
+  const res = await apiClient.patch<APIEnvelope<Agent>>(getScopedAgentUrl(`/${id}`), updates);
+  return requireData(res.data?.success, res.data?.data, 'Updating agent');
 };
 
 export const deleteAgent = async (id: string): Promise<boolean> => {
-  try {
-    await apiClient.delete(getScopedAgentUrl(`/${id}`));
-  } catch (err) {
-    console.warn('API delete failed, removing locally', err);
-  }
-  localAgents = localAgents.filter((a) => a.id !== id);
-  return true;
+  const res = await apiClient.delete<APIEnvelope<{ deleted?: boolean }>>(getScopedAgentUrl(`/${id}`));
+  return !!res.data?.success && res.data.data?.deleted !== false;
 };
 
 // --- AGENT VERSIONING & TEST TOKEN APIS (SYNCED WITH BACKEND HLD) ---
 
 export const getAgentTestToken = async (agentId: string): Promise<CallTicketResponse> => {
-  try {
-    const res = await apiClient.post<APIEnvelope<CallTicketResponse>>(getScopedAgentUrl(`/${agentId}/test-token`));
-    if (res.data?.success && res.data.data) {
-      return res.data.data;
-    }
-  } catch (err) {
-    console.warn('Backend ABS token endpoint unavailable, using mock token', err);
-  }
-
-  return {
-    ticket: `mock_ticket_${agentId}_${Date.now()}`,
-    wssUrl: (import.meta as any).env?.VITE_WS_BASE_URL ? `${(import.meta as any).env.VITE_WS_BASE_URL}/ws/calls/demo` : 'ws://localhost:8084/ws/calls/demo',
-    remainingCreditUSD: 5.0000,
-    maxDurationSec: 300,
-    expiresInSec: 60,
-  };
+  const res = await apiClient.post<APIEnvelope<CallTicketResponse>>(getScopedAgentUrl(`/${agentId}/test-token`));
+  return requireData(res.data?.success, res.data?.data, 'Starting test call');
 };
 
 export const getAgentVersions = async (agentId: string): Promise<AgentVersion[]> => {
-  try {
-    const res = await apiClient.get<APIEnvelope<AgentVersion[]>>(getScopedAgentUrl(`/${agentId}/versions`));
-    if (res.data?.success && res.data.data) {
-      return res.data.data;
-    }
-  } catch (err) {
-    console.warn('Agent versions API unavailable, using local snapshot', err);
-  }
-
-  return [
-    {
-      id: `ver-1-${agentId}`,
-      agentId,
-      versionNum: 1,
-      systemPrompt: 'Initial deployment configuration.',
-      model: 'gpt-4o',
-      voiceId: 'voice_elevenlabs_rachel',
-      language: 'en-US',
-      changeSummary: 'Initial production version',
-      createdAt: new Date().toISOString(),
-    },
-  ];
+  const res = await apiClient.get<APIEnvelope<AgentVersion[]>>(getScopedAgentUrl(`/${agentId}/versions`));
+  return requireData(res.data?.success, res.data?.data, 'Loading agent versions');
 };
 
 export const publishAgentVersion = async (agentId: string, changeSummary: string): Promise<AgentVersion> => {
-  try {
-    const res = await apiClient.post<APIEnvelope<AgentVersion>>(getScopedAgentUrl(`/${agentId}/publish`), { changeSummary });
-    if (res.data?.success && res.data.data) {
-      return res.data.data;
-    }
-  } catch (err) {
-    console.warn('Publish version API unavailable', err);
-  }
-
-  return {
-    id: `ver-${Date.now()}`,
-    agentId,
-    versionNum: 2,
-    systemPrompt: 'Updated system instructions.',
-    model: 'gpt-4o',
-    voiceId: 'voice_elevenlabs_rachel',
-    language: 'en-US',
-    changeSummary,
-    createdAt: new Date().toISOString(),
-  };
+  const res = await apiClient.post<APIEnvelope<AgentVersion>>(getScopedAgentUrl(`/${agentId}/publish`), { changeSummary });
+  return requireData(res.data?.success, res.data?.data, 'Publishing agent version');
 };
 
 export const rollbackAgentVersion = async (agentId: string, versionNum: number): Promise<Agent> => {
-  try {
-    const res = await apiClient.post<APIEnvelope<Agent>>(getScopedAgentUrl(`/${agentId}/rollback`), {
-      target_version: versionNum,
-    });
-    if (res.data?.success && res.data.data) {
-      return res.data.data;
-    }
-  } catch (err) {
-    console.warn('Rollback API unavailable', err);
-  }
-
-  const agent = localAgents.find((a) => a.id === agentId);
-  if (!agent) throw new Error('Agent not found');
-  return agent;
+  const res = await apiClient.post<APIEnvelope<Agent>>(getScopedAgentUrl(`/${agentId}/rollback`), {
+    target_version: versionNum,
+  });
+  return requireData(res.data?.success, res.data?.data, 'Rolling back agent');
 };

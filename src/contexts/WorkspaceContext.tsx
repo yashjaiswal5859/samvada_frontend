@@ -12,12 +12,12 @@ export interface Workspace {
   description: string;
   adminName: string;
   adminEmail: string;
-  activeAgentsCount: number;
-  liveCallsCount: number;
-  monthlyMinutesUsed: number;
-  monthlyMinuteLimit: number;
-  assignedPhoneNumbers: string[];
-  escalationMembersCount: number;
+  activeAgentsCount: number | null;
+  liveCallsCount: number | null;
+  monthlyMinutesUsed: number | null;
+  monthlyMinuteLimit: number | null;
+  assignedPhoneNumbers: string[] | null;
+  escalationMembersCount: number | null;
 }
 
 export type UserRole = 'org_admin' | 'workspace_admin' | 'swiggy_admin';
@@ -29,90 +29,60 @@ interface WorkspaceContextType {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   currentUserRole: UserRole;
-  switchUserRole: (role: UserRole) => void;
   isOrgAdmin: boolean;
   switchWorkspace: (workspaceId: string) => void;
-  createWorkspace: (ws: Omit<Workspace, 'id' | 'activeAgentsCount' | 'liveCallsCount' | 'monthlyMinutesUsed'>) => void;
+  createWorkspace: (ws: Omit<Workspace, 'id' | 'activeAgentsCount' | 'liveCallsCount' | 'monthlyMinutesUsed'>) => Promise<Workspace>;
   organizationName: string;
 }
-
-const DEFAULT_WORKSPACES: Workspace[] = [
-  {
-    id: 'ws-consumer-care',
-    name: 'Customer Support & Care',
-    slug: 'consumer-care',
-    icon: '🎧',
-    description: 'Inbound customer inquiries, escalations, refund processing and satisfaction follow-ups.',
-    adminName: 'Admin',
-    adminEmail: 'admin@platform.ai',
-    activeAgentsCount: 0,
-    liveCallsCount: 0,
-    monthlyMinutesUsed: 0,
-    monthlyMinuteLimit: 100000,
-    assignedPhoneNumbers: [],
-    escalationMembersCount: 1
-  },
-  {
-    id: 'ws-product-promo',
-    name: 'Sales & Outbound Outreach',
-    slug: 'product-promo',
-    icon: '📢',
-    description: 'Outbound campaigns for lead qualification, renewal reminders, and VIP demo scheduling.',
-    adminName: 'Admin',
-    adminEmail: 'admin@platform.ai',
-    activeAgentsCount: 0,
-    liveCallsCount: 0,
-    monthlyMinutesUsed: 0,
-    monthlyMinuteLimit: 50000,
-    assignedPhoneNumbers: [],
-    escalationMembersCount: 1
-  }
-];
 
 const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined);
 
 export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { user, activeOrg, activeWorkspace: authActiveWs, workspaces: authWorkspaces, switchWorkspace: authSwitchWorkspace } = useAuth();
+  const { user, isLoading: authLoading, activeOrg, activeWorkspace: authActiveWs, workspaces: authWorkspaces, switchWorkspace: authSwitchWorkspace, createWorkspace: authCreateWorkspace } = useAuth();
 
   const [workspacesList, setWorkspacesList] = useState<Workspace[]>(() => {
-    return DEFAULT_WORKSPACES;
+    return [];
   });
 
   // Current selected workspace ID from sessionStorage
   const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string>(() => {
-    return getSessionItem(SESSION_KEYS.WORKSPACE_ID) || 'ws-consumer-care';
+    return getSessionItem(SESSION_KEYS.WORKSPACE_ID) || '';
   });
 
   // Sync real workspaces from AuthContext when available
   useEffect(() => {
-    if (authWorkspaces && authWorkspaces.length > 0) {
-      const mapped: Workspace[] = authWorkspaces.map((w) => ({
+    if (!authLoading) {
+      const mapped: Workspace[] = (authWorkspaces || []).map((w) => ({
         id: w.id,
         name: w.name,
         slug: w.slug || 'default',
         icon: w.icon || '💼',
         description: w.description || 'Voice AI Workspace',
-        adminName: user?.displayName || 'Workspace Admin',
-        adminEmail: user?.email || '',
-        activeAgentsCount: 0,
-        liveCallsCount: 0,
-        monthlyMinutesUsed: 0,
-        monthlyMinuteLimit: 10000,
-        assignedPhoneNumbers: [],
-        escalationMembersCount: 1,
+        adminName: '—',
+        adminEmail: '',
+        activeAgentsCount: null,
+        liveCallsCount: null,
+        monthlyMinutesUsed: null,
+        monthlyMinuteLimit: null,
+        assignedPhoneNumbers: null,
+        escalationMembersCount: null,
       }));
       setWorkspacesList(mapped);
 
-      const targetId = authActiveWs?.id || getSessionItem(SESSION_KEYS.WORKSPACE_ID) || mapped[0]?.id;
+      const targetId = authActiveWs?.id || getSessionItem(SESSION_KEYS.WORKSPACE_ID) || mapped[0]?.id || '';
       if (targetId && mapped.some((m) => m.id === targetId)) {
         setCurrentWorkspaceId(targetId);
         setActiveWorkspaceId(targetId);
       } else if (mapped[0]) {
         setCurrentWorkspaceId(mapped[0].id);
         setActiveWorkspaceId(mapped[0].id);
+      } else {
+        setCurrentWorkspaceId('');
+        setActiveWorkspaceId(null);
+        setSessionItem(SESSION_KEYS.WORKSPACE_ID, null);
       }
     }
-  }, [authWorkspaces, authActiveWs, user]);
+  }, [authWorkspaces, authActiveWs, user, authLoading]);
 
   // Synchronize active workspace ID with Axios client header and sessionStorage
   useEffect(() => {
@@ -122,12 +92,8 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
     }
   }, [currentWorkspaceId]);
 
-  // Role: Org Admin vs Workspace Admin
-  const [currentUserRole, setCurrentUserRole] = useState<UserRole>(() => {
-    const saved = getSessionItem('samvada_user_role') as UserRole;
-    if (saved === 'swiggy_admin') return 'org_admin';
-    return saved || 'org_admin';
-  });
+  const roleValue = String(authActiveWs?.role || user?.role || 'workspace_admin').toLowerCase();
+  const currentUserRole: UserRole = roleValue.includes('swiggy') ? 'swiggy_admin' : roleValue.includes('org') ? 'org_admin' : 'workspace_admin';
 
   // Search query for workspace search bar in sidebar
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -143,40 +109,40 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
     }
   };
 
-  const switchUserRole = (role: UserRole) => {
-    setCurrentUserRole(role);
-    setSessionItem('samvada_user_role', role);
-  };
-
-  const createWorkspace = (newWs: Omit<Workspace, 'id' | 'activeAgentsCount' | 'liveCallsCount' | 'monthlyMinutesUsed'>) => {
+  const createWorkspace = async (newWs: Omit<Workspace, 'id' | 'activeAgentsCount' | 'liveCallsCount' | 'monthlyMinutesUsed'>) => {
+    const saved = await authCreateWorkspace({ name: newWs.name, description: newWs.description, monthlyMinuteLimit: newWs.monthlyMinuteLimit ?? undefined });
     const ws: Workspace = {
       ...newWs,
-      id: `ws-${newWs.slug || Date.now()}`,
-      activeAgentsCount: 0,
-      liveCallsCount: 0,
-      monthlyMinutesUsed: 0,
+      id: saved.id,
+      name: saved.name,
+      slug: saved.slug || newWs.slug,
+      activeAgentsCount: null,
+      liveCallsCount: null,
+      monthlyMinutesUsed: null,
+      monthlyMinuteLimit: null,
+      escalationMembersCount: null,
     };
-    const updated = [...workspacesList, ws];
-    setWorkspacesList(updated);
+    setWorkspacesList((previous) => [...previous.filter((item) => item.id !== ws.id), ws]);
     setCurrentWorkspaceId(ws.id);
     setSessionItem(SESSION_KEYS.WORKSPACE_ID, ws.id);
+    return ws;
   };
 
   // Find active workspace object
   const currentWorkspace = workspacesList.find((w) => w.id === currentWorkspaceId) || workspacesList[0] || {
     id: currentWorkspaceId,
-    name: 'Default Workspace',
+    name: authLoading ? 'Loading workspace…' : 'No workspace selected',
     slug: 'default',
     icon: '💼',
     description: 'Voice AI Workspace',
-    adminName: user?.displayName || 'Workspace Admin',
-    adminEmail: user?.email || '',
-    activeAgentsCount: 0,
-    liveCallsCount: 0,
-    monthlyMinutesUsed: 0,
-    monthlyMinuteLimit: 10000,
-    assignedPhoneNumbers: [],
-    escalationMembersCount: 1,
+    adminName: '—',
+    adminEmail: '',
+    activeAgentsCount: null,
+    liveCallsCount: null,
+    monthlyMinutesUsed: null,
+    monthlyMinuteLimit: null,
+    assignedPhoneNumbers: null,
+    escalationMembersCount: null,
   };
 
   const visibleWorkspaces = isOrgAdmin
@@ -196,7 +162,6 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
         searchQuery,
         setSearchQuery,
         currentUserRole,
-        switchUserRole,
         isOrgAdmin,
         switchWorkspace,
         createWorkspace,

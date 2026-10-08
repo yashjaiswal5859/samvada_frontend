@@ -37,9 +37,10 @@ export const getCallRecords = async (params?: { agentId?: string; limit?: number
       }));
     }
   } catch (err) {
-    console.warn('Calls API unavailable, returning empty calls list', err);
+    console.warn('Calls API unavailable', err);
+    throw new Error('Call history is temporarily unavailable. Please try again.');
   }
-  return [];
+  throw new Error('Call history was not confirmed by the server.');
 };
 
 export const getCallRecordById = async (id: string): Promise<CallRecord | undefined> => {

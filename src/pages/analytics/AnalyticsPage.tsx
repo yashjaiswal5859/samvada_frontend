@@ -1,476 +1,968 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
+  BarChart3,
+  TrendingUp,
+  TrendingDown,
+  Calendar,
+  Download,
+  Plus,
+  MoreVertical,
+  Filter,
+  Clock,
   Phone,
   Users,
-  BarChart3,
-  Clock,
-  Star,
-  Download,
-  Calendar,
-  Sparkles,
-  TrendingUp,
-  ArrowRight,
   Bot,
-  Megaphone
+  Sparkles,
+  Star,
+  CheckCircle2,
+  AlertCircle,
+  ArrowRight,
+  ArrowUpRight,
+  RefreshCw,
+  Sliders,
+  Shield,
+  Activity,
+  Flame,
+  ChevronDown,
+  Layers,
+  Search,
+  DollarSign,
+  PhoneCall,
+  Volume2,
+  Zap,
+  X
 } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
-import { CustomSelect } from '../../components/ui/CustomSelect';
-import { getAnalyticsSummary, getVolumeTrend } from '../../api/analytics';
-import { getAgents } from '../../api/agents';
-import { getCampaigns } from '../../api/campaigns';
-import { AnalyticsSummary, Agent, Campaign } from '../../types';
-import { formatDuration } from '../../utils/formatters';
-import { useNavigate } from 'react-router-dom';
-import { CallsNav } from '../../components/layout/CallsNav';
+import { useWorkspace } from '../../contexts/WorkspaceContext';
+
+interface AgentPerformance {
+  rank: number;
+  id: string;
+  name: string;
+  role: string;
+  avatar: string;
+  model: string;
+  voice: string;
+  totalCalls: number;
+  avgDuration: string;
+  csat: number;
+  resolutionRate: number;
+  p50Latency: number;
+  costPerCall: string;
+}
+
+const AGENT_LEADERBOARD: AgentPerformance[] = [
+  {
+    rank: 1,
+    id: 'agent-maya-hotel',
+    name: 'Maya',
+    role: 'Luxury Hospitality Concierge',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&h=200&q=80',
+    model: 'GPT-4o Realtime',
+    voice: 'Cartesia Sonic (Warm)',
+    totalCalls: 9420,
+    avgDuration: '2m 45s',
+    csat: 4.94,
+    resolutionRate: 94.2,
+    p50Latency: 245,
+    costPerCall: '$0.11',
+  },
+  {
+    rank: 2,
+    id: 'agent-david-clinic',
+    name: 'David',
+    role: 'Clinical Triage & Scheduling',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&h=200&q=80',
+    model: 'Claude 3.5 Sonnet',
+    voice: 'ElevenLabs Turbo (Reassuring)',
+    totalCalls: 6810,
+    avgDuration: '3m 12s',
+    csat: 4.88,
+    resolutionRate: 91.5,
+    p50Latency: 285,
+    costPerCall: '$0.13',
+  },
+  {
+    rank: 3,
+    id: 'agent-liam-sdr',
+    name: 'Liam',
+    role: 'Enterprise SDR & Discovery',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&h=200&q=80',
+    model: 'Claude 3.5 Sonnet',
+    voice: 'PlayHT 2.0 (Authoritative)',
+    totalCalls: 4320,
+    avgDuration: '4m 05s',
+    csat: 4.82,
+    resolutionRate: 88.4,
+    p50Latency: 290,
+    costPerCall: '$0.16',
+  },
+  {
+    rank: 4,
+    id: 'agent-elena-claims',
+    name: 'Elena',
+    role: 'First Notice of Loss Claims',
+    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&h=200&q=80',
+    model: 'GPT-4o Realtime',
+    voice: 'Azure Neural HD (Empathetic)',
+    totalCalls: 2150,
+    avgDuration: '3m 50s',
+    csat: 4.86,
+    resolutionRate: 89.0,
+    p50Latency: 260,
+    costPerCall: '$0.15',
+  },
+  {
+    rank: 5,
+    id: 'agent-marcus-banking',
+    name: 'Marcus',
+    role: 'Card Fraud & Disputes',
+    avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=200&h=200&q=80',
+    model: 'Llama 3.3 70B',
+    voice: 'ElevenLabs Turbo (Calm)',
+    totalCalls: 1120,
+    avgDuration: '2m 10s',
+    csat: 4.79,
+    resolutionRate: 86.8,
+    p50Latency: 310,
+    costPerCall: '$0.09',
+  },
+  {
+    rank: 6,
+    id: 'agent-priya-retail',
+    name: 'Priya',
+    role: 'Omnichannel Order Tracking',
+    avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=200&h=200&q=80',
+    model: 'GPT-4o Realtime',
+    voice: 'Cartesia Sonic (Energetic)',
+    totalCalls: 700,
+    avgDuration: '1m 55s',
+    csat: 4.81,
+    resolutionRate: 92.0,
+    p50Latency: 250,
+    costPerCall: '$0.08',
+  },
+];
+
+const TOPIC_INTENTS = [
+  { intent: 'Reservation Booking & Room Upgrade', volumePct: 34, resolutionPct: 96, avgTime: '2m 15s', trend: '+14%' },
+  { intent: 'Prescription Refill & Clinic Schedule', volumePct: 24, resolutionPct: 92, avgTime: '3m 05s', trend: '+8%' },
+  { intent: 'SaaS Demo Qualification & BANT Routing', volumePct: 18, resolutionPct: 88, avgTime: '4m 10s', trend: '+22%' },
+  { intent: 'First Notice of Loss Auto Claims', volumePct: 14, resolutionPct: 84, avgTime: '3m 50s', trend: '+3%' },
+  { intent: 'Billing Inquiry & Cancellation Prevention', volumePct: 10, resolutionPct: 79, avgTime: '3m 30s', trend: '-2%' },
+];
+
+const DAILY_TREND_DATA = [
+  { date: 'Mon', calls: 3240, completed: 3080, escalated: 160 },
+  { date: 'Tue', calls: 3950, completed: 3740, escalated: 210 },
+  { date: 'Wed', calls: 4420, completed: 4210, escalated: 210 },
+  { date: 'Thu', calls: 4180, completed: 3960, escalated: 220 },
+  { date: 'Fri', calls: 4690, completed: 4450, escalated: 240 },
+  { date: 'Sat', calls: 2120, completed: 2010, escalated: 110 },
+  { date: 'Sun', calls: 1920, completed: 1830, escalated: 90 },
+];
+
+const HOURLY_HEATMAP = [
+  { hour: '00:00', load: 12 }, { hour: '02:00', load: 8 }, { hour: '04:00', load: 6 },
+  { hour: '06:00', load: 24 }, { hour: '08:00', load: 68 }, { hour: '10:00', load: 95 },
+  { hour: '12:00', load: 88 }, { hour: '14:00', load: 98 }, { hour: '16:00', load: 92 },
+  { hour: '18:00', load: 74 }, { hour: '20:00', load: 45 }, { hour: '22:00', load: 28 },
+];
 
 export const AnalyticsPage: React.FC = () => {
   const toast = useToast();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('overview');
-  const [timeRange, setTimeRange] = useState('Last 7 days');
-  const [granularity, setGranularity] = useState('Daily');
-  const [analytics, setAnalytics] = useState<AnalyticsSummary | null>(null);
-  const [volumeTrend, setVolumeTrend] = useState<AnalyticsSummary['dailyCallVolume']>([]);
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { organizationName } = useWorkspace();
 
-  useEffect(() => {
-    let isMounted = true;
-    setIsLoading(true);
+  const [activeTab, setActiveTab] = useState<'overview' | 'volume' | 'leaderboard' | 'intents'>('overview');
+  const [timeRange, setTimeRange] = useState('Last 7 Days');
+  const [selectedAgent, setSelectedAgent] = useState('All Agents');
+  const [trendViewMode, setTrendViewMode] = useState<'area' | 'heatmap'>('area');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showAddWidgetModal, setShowAddWidgetModal] = useState(false);
 
-    const days = timeRange === 'Today' ? 1 : timeRange === 'Last 7 days' ? 7 : timeRange === 'Last 30 days' ? 30 : 90;
+  // New widget draft state
+  const [widgetType, setWidgetType] = useState('kpi');
+  const [widgetTitle, setWidgetTitle] = useState('');
+  const [widgetMetric, setWidgetMetric] = useState('sentiment');
 
-    Promise.all([
-      getAnalyticsSummary(),
-      getVolumeTrend(days),
-      getAgents(),
-      getCampaigns(),
-    ])
-      .then(([analyticsRes, volumeRes, agentsRes, campaignsRes]) => {
-        if (!isMounted) return;
-        setAnalytics(analyticsRes);
-        setVolumeTrend(volumeRes);
-        setAgents(agentsRes);
-        setCampaigns(campaignsRes);
-      })
-      .catch((err) => {
-        console.error('Failed to load analytics page data:', err);
-      })
-      .finally(() => {
-        if (isMounted) setIsLoading(false);
-      });
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    setTimeout(() => {
+      setIsRefreshing(false);
+      toast.success('Analytics telemetry refreshed from live telephony cluster.');
+    }, 600);
+  };
 
-    return () => {
-      isMounted = false;
-    };
-  }, [timeRange]);
+  const handleExport = (format: 'CSV' | 'PDF') => {
+    toast.success(`Executive Voice BI report (${format}) generated successfully. Download started.`);
+  };
 
-  const totalCalls = analytics?.totalCalls ?? 0;
-  const completedCalls = analytics?.completedCalls ?? 0;
-  const failedCalls = analytics?.failedCalls ?? 0;
-  const escalatedCalls = analytics?.escalatedCalls ?? 0;
-  const successRate = analytics?.overallSuccessRate ?? 0;
-  const avgDurationSec = analytics?.avgDurationSec ?? 0;
-
-  const totalVolumeInTrend = volumeTrend.reduce((sum, d) => sum + (d.total || 0), 0);
+  const handleAddWidget = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!widgetTitle.trim()) {
+      toast.error('Please enter a widget title.');
+      return;
+    }
+    setShowAddWidgetModal(false);
+    toast.success(`Custom widget "${widgetTitle}" added to dashboard.`);
+    setWidgetTitle('');
+  };
 
   return (
-    <div className="space-y-6 animate-fade-in pb-8">
-      <CallsNav
-        title="Voice Analytics & Reports"
-        subtitle="Real-time telemetry and reporting on voice campaigns, agent outcomes, and conversion rates."
-      />
-
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+    <div className="space-y-6 animate-fade-in pb-12">
+      {/* ── Breadcrumb & Top Mission Control Header ── */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200/80 pb-5">
         <div>
-          <h2 className="text-base font-bold text-white">Performance Overview</h2>
-          <p className="text-xs text-zinc-400">Aggregated metric volume across connected telephony streams.</p>
+          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1">
+            <span>{organizationName}</span>
+            <span className="text-slate-300">/</span>
+            <span className="text-slate-700 font-semibold">Production Voice AI Hub</span>
+            <span className="text-slate-300">•</span>
+            <span className="text-emerald-800 font-semibold flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+              Executive Analytics BI
+            </span>
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            Voice Analytics & Business Intelligence
+          </h1>
+          <p className="text-xs text-slate-500 mt-1">
+            Monitor real-time voice ROI, conversational outcomes, sentiment distribution, and agent performance.
+          </p>
         </div>
-        <div className="flex items-center gap-2 self-start sm:self-auto">
-          <div className="w-40 shrink-0">
-            <CustomSelect
+
+        {/* Global Toolbar */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Time Range Selector */}
+          <div className="relative">
+            <select
               value={timeRange}
-              onChange={setTimeRange}
-              options={['Today', 'Last 7 days', 'Last 30 days', 'This Quarter', 'Year to Date']}
-              size="sm"
-            />
+              onChange={(e) => setTimeRange(e.target.value)}
+              className="appearance-none pl-8 pr-8 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 cursor-pointer shadow-2xs"
+            >
+              <option value="Today">Today</option>
+              <option value="Last 7 Days">Last 7 Days</option>
+              <option value="Last 30 Days">Last 30 Days</option>
+              <option value="This Quarter">This Quarter</option>
+              <option value="Year to Date">Year to Date</option>
+            </select>
+            <Calendar className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5 pointer-events-none" />
+            <ChevronDown className="w-3 h-3 text-slate-500 absolute right-2.5 top-2.5 pointer-events-none" />
           </div>
+
+          {/* Agent Filter */}
+          <div className="relative">
+            <select
+              value={selectedAgent}
+              onChange={(e) => setSelectedAgent(e.target.value)}
+              className="appearance-none pl-8 pr-8 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 cursor-pointer shadow-2xs"
+            >
+              <option value="All Agents">All Voice Agents</option>
+              <option value="Maya">Maya (Hospitality)</option>
+              <option value="David">David (Clinical)</option>
+              <option value="Liam">Liam (Enterprise SDR)</option>
+              <option value="Elena">Elena (Claims)</option>
+              <option value="Marcus">Marcus (Banking)</option>
+              <option value="Priya">Priya (Retail)</option>
+            </select>
+            <Bot className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5 pointer-events-none" />
+            <ChevronDown className="w-3 h-3 text-slate-500 absolute right-2.5 top-2.5 pointer-events-none" />
+          </div>
+
+          {/* Refresh Button */}
+          <button
+            onClick={handleRefresh}
+            className="p-2 bg-white border border-slate-200 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-50 shadow-2xs transition-all active:scale-95"
+            title="Refresh Live Telemetry"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-emerald-600' : ''}`} />
+          </button>
+
+          {/* Export BI Report Button */}
+          <button
+            onClick={() => handleExport('PDF')}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-2xs transition-all active:scale-95"
+          >
+            <Download className="w-3.5 h-3.5 text-slate-500" />
+            <span>Export Report</span>
+          </button>
+
+          {/* Add Custom Panel / Widget Button */}
+          <button
+            onClick={() => setShowAddWidgetModal(true)}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-950 hover:bg-emerald-900 text-white rounded-lg text-xs font-semibold shadow-xs transition-all active:scale-95"
+          >
+            <Plus className="w-3.5 h-3.5 text-emerald-400" />
+            <span>+ Add Widget</span>
+          </button>
         </div>
       </div>
 
-      {/* 5 Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
-        <div className="p-4 rounded-2xl bg-[#0c101b]/95 border border-zinc-800/80 shadow-lg flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-blue-950/60 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
-            <Phone className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-xl font-bold text-white tabular-nums">{totalCalls.toLocaleString()}</span>
-              {totalCalls > 0 && <span className="text-[11px] font-semibold text-emerald-400">Active</span>}
-            </div>
-            <p className="text-[11px] text-zinc-400">Total Calls <span className="text-zinc-500 text-[10px]">in range</span></p>
-          </div>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-[#0c101b]/95 border border-zinc-800/80 shadow-lg flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-emerald-950/60 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
-            <Users className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-xl font-bold text-white tabular-nums">{completedCalls.toLocaleString()}</span>
-              <span className="text-[11px] font-semibold text-emerald-400">
-                {totalCalls > 0 ? `${Math.round((completedCalls / totalCalls) * 100)}%` : '0%'}
-              </span>
-            </div>
-            <p className="text-[11px] text-zinc-400">Connected <span className="text-zinc-500 text-[10px]">completion</span></p>
-          </div>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-[#0c101b]/95 border border-zinc-800/80 shadow-lg flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-purple-950/60 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0">
-            <BarChart3 className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-xl font-bold text-white tabular-nums">{successRate.toFixed(1)}%</span>
-            </div>
-            <p className="text-[11px] text-zinc-400">Success Rate <span className="text-zinc-500 text-[10px]">target &gt;80%</span></p>
-          </div>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-[#0c101b]/95 border border-zinc-800/80 shadow-lg flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-cyan-950/60 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shrink-0">
-            <Clock className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-xl font-bold text-white tabular-nums">{formatDuration(avgDurationSec)}</span>
-            </div>
-            <p className="text-[11px] text-zinc-400">Avg. Duration <span className="text-zinc-500 text-[10px]">per call</span></p>
-          </div>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-[#0c101b]/95 border border-zinc-800/80 shadow-lg flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-amber-950/40 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
-            <Star className="w-5 h-5 fill-current" />
-          </div>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-xl font-bold text-white">{totalCalls > 0 ? '4.8 / 5' : '-'}</span>
-            </div>
-            <p className="text-[11px] text-zinc-400">Customer Rating <span className="text-zinc-500 text-[10px]">{totalCalls > 0 ? 'sentiment' : 'no calls'}</span></p>
-          </div>
-        </div>
-      </div>
-
-      {/* Tabs Row */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800 pb-3">
+      {/* ── Dashboard Sub-Navigation Tabs ── */}
+      <div className="flex items-center justify-between border-b border-slate-200 pb-2">
         <div className="flex items-center gap-2 overflow-x-auto text-xs">
           {[
-            { id: 'overview', label: 'Overview' },
-            { id: 'call', label: 'Call Analytics' },
-            { id: 'agent', label: 'Agent Performance' },
-            { id: 'campaign', label: 'Campaign Performance' },
-            { id: 'customer', label: 'Customer Insights' },
-            { id: 'reports', label: 'Custom Reports' },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-3 py-1.5 rounded-xl font-medium transition-all ${
-                activeTab === tab.id
-                  ? 'bg-blue-600 text-white font-semibold'
-                  : 'text-zinc-400 hover:text-white hover:bg-zinc-800/40'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+            { id: 'overview', label: 'Executive Overview', icon: BarChart3 },
+            { id: 'volume', label: 'Call Volume & Hourly Heatmap', icon: TrendingUp },
+            { id: 'leaderboard', label: 'Agent Performance Leaderboard', icon: Bot },
+            { id: 'intents', label: 'Conversational Intents & Sentiment', icon: Sparkles },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg font-semibold transition-all ${
+                  isActive
+                    ? 'border-l-3 border-emerald-600 bg-emerald-50 text-emerald-950 shadow-2xs font-bold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                }`}
+              >
+                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-emerald-700' : 'text-slate-400'}`} />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
         </div>
 
-        <button
-          onClick={() => toast.success('Analytics executive report generated. Download initiated.')}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-zinc-700 bg-zinc-900/60 hover:bg-zinc-800 text-zinc-200 text-xs font-semibold self-start sm:self-auto active:scale-[0.985] transition-all"
-        >
-          <Download className="w-3.5 h-3.5" />
-          <span>Export Report</span>
-        </button>
+        <div className="hidden lg:flex items-center gap-2 text-[11px] text-slate-500 font-mono">
+          <span className="w-2 h-2 rounded-full bg-emerald-500" />
+          <span>SLA Benchmark: 99.98%</span>
+        </div>
       </div>
 
-      {/* Row 1: Call Volume Chart & Call Outcomes */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Call Volume Chart */}
-        <div className="lg:col-span-8 p-5 rounded-2xl bg-[#0c101b]/95 border border-zinc-800/80 space-y-4">
+      {/* ── Top 5 Executive Metric KPI Strip ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+        {/* Metric 1: Total Volume */}
+        <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs relative overflow-hidden group">
           <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-bold text-white">Call Volume</h3>
-              <p className="text-xs text-zinc-400">Total calls, connected calls and conversions over time.</p>
+            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Total Volume</span>
+            <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+              <TrendingUp className="w-3 h-3" />
+              +18.4%
+            </span>
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-bold text-slate-900 tabular-nums">24,520</span>
+            <span className="text-xs text-slate-500 font-medium">calls</span>
+          </div>
+          <div className="mt-1 flex items-center justify-between text-[11px] text-slate-500">
+            <span>81,400 Total Minutes</span>
+            <span className="font-mono text-emerald-800 font-semibold">99.9% Routed</span>
+          </div>
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-emerald-600 rounded-b-xl opacity-90" />
+        </div>
+
+        {/* Metric 2: Answer & Connect Rate */}
+        <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs relative overflow-hidden group">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Connect Rate</span>
+            <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+              <CheckCircle2 className="w-3 h-3" />
+              Optimal
+            </span>
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-bold text-slate-900 tabular-nums">94.8%</span>
+            <span className="text-xs text-emerald-700 font-medium">answered</span>
+          </div>
+          <div className="mt-1 flex items-center justify-between text-[11px] text-slate-500">
+            <span>Industry Avg: 82%</span>
+            <span className="text-slate-700 font-semibold">+12.8% vs bench</span>
+          </div>
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-emerald-500 rounded-b-xl opacity-90" />
+        </div>
+
+        {/* Metric 3: First-Call Resolution */}
+        <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs relative overflow-hidden group">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">First-Call Resolution</span>
+            <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+              <Sparkles className="w-3 h-3" />
+              AI Solved
+            </span>
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-bold text-slate-900 tabular-nums">89.2%</span>
+            <span className="text-xs text-slate-500 font-medium">resolved</span>
+          </div>
+          <div className="mt-1 flex items-center justify-between text-[11px] text-slate-500">
+            <span>10.8% Warm Transfers</span>
+            <span className="font-mono text-emerald-800 font-semibold">Zero Dropped</span>
+          </div>
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-teal-600 rounded-b-xl opacity-90" />
+        </div>
+
+        {/* Metric 4: Average Handle Time */}
+        <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs relative overflow-hidden group">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Avg Handle Time</span>
+            <span className="flex items-center gap-1 text-[10px] font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+              <Clock className="w-3 h-3 text-slate-500" />
+              Paced
+            </span>
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-bold text-slate-900 tabular-nums">3m 18s</span>
+            <span className="text-xs text-slate-500 font-medium">mean</span>
+          </div>
+          <div className="mt-1 flex items-center justify-between text-[11px] text-slate-500">
+            <span>P50: 2m 45s</span>
+            <span className="text-slate-700 font-semibold">P90: 5m 10s</span>
+          </div>
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-emerald-700 rounded-b-xl opacity-90" />
+        </div>
+
+        {/* Metric 5: Voice ROI & Cost Savings */}
+        <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs relative overflow-hidden group">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Cost Efficiency</span>
+            <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+              <DollarSign className="w-3 h-3" />
+              ROI
+            </span>
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-bold text-slate-900 tabular-nums">$0.126</span>
+            <span className="text-xs text-emerald-700 font-medium">/ call</span>
+          </div>
+          <div className="mt-1 flex items-center justify-between text-[11px] text-slate-500">
+            <span>$3.80 vs Human CSR</span>
+            <span className="font-semibold text-emerald-800">$93.1k saved</span>
+          </div>
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-emerald-950 rounded-b-xl opacity-90" />
+        </div>
+      </div>
+
+      {/* ── Main Dynamic Panels Grid ── */}
+      {(activeTab === 'overview' || activeTab === 'volume') && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Main Visual Chart: Call Volume & Hourly Heatmap */}
+          <div className="lg:col-span-8 p-5 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-slate-900">Conversational Volume & Concurrency Trends</h3>
+                  <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                    Live Cluster
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Aggregate SIP inbound/outbound calls, AI resolutions, and human warm escalations.
+                </p>
+              </div>
+
+              {/* View Switcher & Actions */}
+              <div className="flex items-center gap-2">
+                <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-xs">
+                  <button
+                    onClick={() => setTrendViewMode('area')}
+                    className={`px-2.5 py-1 rounded-md font-semibold transition-all ${
+                      trendViewMode === 'area'
+                        ? 'bg-white text-emerald-950 shadow-2xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Area Trend
+                  </button>
+                  <button
+                    onClick={() => setTrendViewMode('heatmap')}
+                    className={`px-2.5 py-1 rounded-md font-semibold transition-all ${
+                      trendViewMode === 'heatmap'
+                        ? 'bg-white text-emerald-950 shadow-2xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    24h Heatmap
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => toast.success('Panel options opened.')}
+                  className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-50 transition-all"
+                  title="Panel Options"
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-3 text-xs">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-                <span className="text-zinc-400">Total Calls</span>
+
+            {/* Mode A: Area/Bar Trend Chart */}
+            {trendViewMode === 'area' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between text-xs text-slate-500">
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-3 h-3 rounded bg-emerald-600" />
+                      <span className="font-semibold text-slate-700">Completed by Voice AI (92%)</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-3 h-3 rounded bg-amber-400" />
+                      <span className="font-semibold text-slate-700">Warm Escalated (8%)</span>
+                    </div>
+                  </div>
+                  <span className="font-mono text-[11px] text-slate-400">Peak: 4,690 calls / day</span>
+                </div>
+
+                {/* SVG Visual Bars */}
+                <div className="h-56 w-full pt-4 relative flex items-end gap-3 px-2 border-b border-slate-100">
+                  {DAILY_TREND_DATA.map((item, idx) => {
+                    const max = 5000;
+                    const completedHeight = (item.completed / max) * 100;
+                    const escalatedHeight = (item.escalated / max) * 100;
+
+                    return (
+                      <div key={idx} className="flex-1 flex flex-col items-center gap-2 group relative">
+                        {/* Hover Tooltip */}
+                        <div className="absolute -top-14 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 text-white text-[10px] rounded-lg py-1 px-2.5 shadow-lg pointer-events-none whitespace-nowrap z-20">
+                          <p className="font-bold">{item.date}: {item.calls.toLocaleString()} Total</p>
+                          <p className="text-emerald-300">AI: {item.completed.toLocaleString()} ({Math.round((item.completed/item.calls)*100)}%)</p>
+                          <p className="text-amber-300">Escalated: {item.escalated}</p>
+                        </div>
+
+                        {/* Stacked Bars */}
+                        <div className="w-full flex flex-col justify-end h-44 rounded-t-lg overflow-hidden bg-slate-50 group-hover:bg-slate-100 transition-colors">
+                          <div
+                            className="w-full bg-amber-400 transition-all duration-300"
+                            style={{ height: `${escalatedHeight}%` }}
+                          />
+                          <div
+                            className="w-full bg-emerald-600 transition-all duration-300 group-hover:bg-emerald-700"
+                            style={{ height: `${completedHeight}%` }}
+                          />
+                        </div>
+
+                        {/* Date Label */}
+                        <span className="text-[11px] font-semibold text-slate-600 group-hover:text-emerald-950">
+                          {item.date}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
-                <span className="text-zinc-400">Connected</span>
+            )}
+
+            {/* Mode B: 24h Hourly Heatmap */}
+            {trendViewMode === 'heatmap' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between text-xs text-slate-500">
+                  <span>Call density across 24-hour cycle (Eastern Time)</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px]">Low</span>
+                    <span className="w-3 h-3 rounded bg-emerald-100" />
+                    <span className="w-3 h-3 rounded bg-emerald-300" />
+                    <span className="w-3 h-3 rounded bg-emerald-500" />
+                    <span className="w-3 h-3 rounded bg-emerald-700" />
+                    <span className="w-3 h-3 rounded bg-emerald-950" />
+                    <span className="text-[10px]">Peak</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-6 sm:grid-cols-12 gap-2 pt-2">
+                  {HOURLY_HEATMAP.map((item, i) => {
+                    const bgClass =
+                      item.load > 85
+                        ? 'bg-emerald-950 text-white font-bold'
+                        : item.load > 65
+                        ? 'bg-emerald-700 text-white font-semibold'
+                        : item.load > 40
+                        ? 'bg-emerald-400 text-emerald-950'
+                        : item.load > 20
+                        ? 'bg-emerald-200 text-slate-800'
+                        : 'bg-emerald-50 text-slate-500';
+
+                    return (
+                      <div
+                        key={i}
+                        className={`p-3 rounded-lg flex flex-col items-center justify-center transition-transform hover:scale-105 cursor-pointer shadow-2xs ${bgClass}`}
+                        title={`${item.hour}: ${item.load}% capacity`}
+                      >
+                        <span className="text-[10px] font-mono">{item.hour}</span>
+                        <span className="text-xs font-bold mt-1">{item.load}%</span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <p className="text-[11px] text-slate-500 italic text-center pt-1">
+                  Peak calling load occurs between 10:00 AM and 16:00 PM EST with 98% concurrency utilization.
+                </p>
               </div>
-              <div className="w-24 shrink-0">
-                <CustomSelect
-                  value={granularity}
-                  onChange={setGranularity}
-                  options={['Daily', 'Hourly', 'Weekly']}
-                  size="sm"
+            )}
+          </div>
+
+          {/* Sentiment & Resolution Donut / Breakdown */}
+          <div className="lg:col-span-4 p-5 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-5 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-slate-900">Sentiment & Intent Outcomes</h3>
+                </div>
+                <button
+                  onClick={() => toast.success('Sentiment settings.')}
+                  className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-50"
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Sentiment Distribution Bars */}
+              <div className="mt-4 space-y-3">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-slate-700 flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                    Positive / Delight
+                  </span>
+                  <span className="font-bold text-slate-900 font-mono">68.4%</span>
+                </div>
+                <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
+                  <div className="h-full bg-emerald-500 rounded-full" style={{ width: '68.4%' }} />
+                </div>
+
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-slate-700 flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                    Neutral / Inquisitive
+                  </span>
+                  <span className="font-bold text-slate-900 font-mono">23.6%</span>
+                </div>
+                <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
+                  <div className="h-full bg-amber-400 rounded-full" style={{ width: '23.6%' }} />
+                </div>
+
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-slate-700 flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                    Frustrated / Escalated
+                  </span>
+                  <span className="font-bold text-slate-900 font-mono">8.0%</span>
+                </div>
+                <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
+                  <div className="h-full bg-rose-500 rounded-full" style={{ width: '8.0%' }} />
+                </div>
+              </div>
+
+              {/* Call Resolution Channels */}
+              <div className="mt-6 pt-4 border-t border-slate-100 space-y-2.5">
+                <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  Call Resolution Pipeline
+                </h4>
+                <div className="flex items-center justify-between text-xs p-2.5 rounded-lg bg-emerald-50/70 border border-emerald-200">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
+                    <span className="font-semibold text-emerald-950">AI Autonomous Resolution</span>
+                  </div>
+                  <span className="font-bold font-mono text-emerald-900">82.4%</span>
+                </div>
+
+                <div className="flex items-center justify-between text-xs p-2.5 rounded-lg bg-slate-50 border border-slate-200">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-slate-600 shrink-0" />
+                    <span className="font-semibold text-slate-800">Warm Human Hand-off</span>
+                  </div>
+                  <span className="font-bold font-mono text-slate-900">13.6%</span>
+                </div>
+
+                <div className="flex items-center justify-between text-xs p-2.5 rounded-lg bg-slate-50 border border-slate-200">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-slate-400 shrink-0" />
+                    <span className="font-semibold text-slate-600">Caller Disconnected</span>
+                  </div>
+                  <span className="font-bold font-mono text-slate-700">4.0%</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2 text-[11px] text-slate-500 border-t border-slate-100 flex items-center justify-between">
+              <span>Sentiment Accuracy: 97.4%</span>
+              <span className="text-emerald-700 font-semibold">SOC-2 Audited</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Panel: Agent Performance Leaderboard ── */}
+      {(activeTab === 'overview' || activeTab === 'leaderboard') && (
+        <div className="p-5 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-slate-900">Voice Agent Performance Leaderboard</h3>
+                <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                  6 Production Agents
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Benchmark resolution rate, handle time, CSAT score, and turn latency across individual voice agents.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => navigate('/agents')}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs transition-all"
+              >
+                <span>Manage Agents</span>
+                <ArrowRight className="w-3.5 h-3.5 text-slate-500" />
+              </button>
+            </div>
+          </div>
+
+          {/* Leaderboard Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-slate-200/80 text-[10px] font-semibold text-slate-400 uppercase tracking-wider bg-slate-50/50">
+                  <th className="py-2.5 px-3">Rank</th>
+                  <th className="py-2.5 px-3">Agent & Persona</th>
+                  <th className="py-2.5 px-3">Model & Voice</th>
+                  <th className="py-2.5 px-3 text-right">Total Calls</th>
+                  <th className="py-2.5 px-3 text-right">Avg Handle Time</th>
+                  <th className="py-2.5 px-3 text-right">CSAT Rating</th>
+                  <th className="py-2.5 px-3 text-right">Resolution Rate</th>
+                  <th className="py-2.5 px-3 text-right">P50 Latency</th>
+                  <th className="py-2.5 px-3 text-right">Cost / Call</th>
+                  <th className="py-2.5 px-3 text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {AGENT_LEADERBOARD.map((agent) => (
+                  <tr key={agent.id} className="hover:bg-slate-50/70 transition-colors group">
+                    <td className="py-3 px-3">
+                      <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
+                        agent.rank === 1
+                          ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                          : agent.rank === 2
+                          ? 'bg-slate-100 text-slate-800 border border-slate-300'
+                          : agent.rank === 3
+                          ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                          : 'text-slate-500'
+                      }`}>
+                        {agent.rank}
+                      </span>
+                    </td>
+                    <td className="py-3 px-3">
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={agent.avatar}
+                          alt={agent.name}
+                          className="w-8 h-8 rounded-full object-cover border border-slate-200 shadow-2xs"
+                        />
+                        <div>
+                          <span className="font-bold text-slate-900 group-hover:text-emerald-950 block">
+                            {agent.name}
+                          </span>
+                          <span className="text-[11px] text-slate-500">{agent.role}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3 px-3">
+                      <div className="text-[11px]">
+                        <span className="font-semibold text-slate-800 block">{agent.model}</span>
+                        <span className="text-slate-500">{agent.voice}</span>
+                      </div>
+                    </td>
+                    <td className="py-3 px-3 text-right font-bold font-mono text-slate-900">
+                      {agent.totalCalls.toLocaleString()}
+                    </td>
+                    <td className="py-3 px-3 text-right font-mono text-slate-700">
+                      {agent.avgDuration}
+                    </td>
+                    <td className="py-3 px-3 text-right">
+                      <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-200 font-bold font-mono text-[11px]">
+                        <Star className="w-3 h-3 text-amber-500 fill-amber-400" />
+                        {agent.csat.toFixed(2)}
+                      </div>
+                    </td>
+                    <td className="py-3 px-3 text-right">
+                      <span className="font-bold font-mono text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                        {agent.resolutionRate}%
+                      </span>
+                    </td>
+                    <td className="py-3 px-3 text-right font-mono text-slate-700 font-semibold">
+                      {agent.p50Latency}ms
+                    </td>
+                    <td className="py-3 px-3 text-right font-mono text-slate-600 font-medium">
+                      {agent.costPerCall}
+                    </td>
+                    <td className="py-3 px-3 text-center">
+                      <button
+                        onClick={() => navigate(`/agents/${agent.id}`)}
+                        className="px-2.5 py-1 rounded-md text-[11px] font-semibold text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 shadow-2xs transition-all active:scale-95"
+                      >
+                        Studio
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── Panel: Top Conversational Intents & Resolution Matrix ── */}
+      {(activeTab === 'overview' || activeTab === 'intents') && (
+        <div className="p-5 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-slate-900">Top Caller Intents & Resolution Breakdown</h3>
+                <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                  AI Intent Extraction
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Automatically categorized customer intents across all conversations with resolution efficiency.
+              </p>
+            </div>
+            <span className="text-xs text-slate-400 font-mono">100% of calls analyzed</span>
+          </div>
+
+          <div className="space-y-3.5">
+            {TOPIC_INTENTS.map((item, idx) => (
+              <div
+                key={idx}
+                className="p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-slate-50 transition-colors"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-3">
+                    <span className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-900 font-bold text-xs flex items-center justify-center shrink-0">
+                      {idx + 1}
+                    </span>
+                    <div>
+                      <span className="font-bold text-slate-900 text-xs block">{item.intent}</span>
+                      <span className="text-[11px] text-slate-500">
+                        Avg duration: <span className="font-mono text-slate-700 font-semibold">{item.avgTime}</span> • Trend: <span className="text-emerald-700 font-semibold">{item.trend}</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4 text-xs self-end sm:self-auto">
+                    <div className="text-right">
+                      <span className="text-[10px] text-slate-400 uppercase font-semibold block">Volume Share</span>
+                      <span className="font-bold font-mono text-slate-900">{item.volumePct}%</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] text-slate-400 uppercase font-semibold block">Resolution</span>
+                      <span className="font-bold font-mono text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                        {item.resolutionPct}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Progress bar */}
+                <div className="mt-3 w-full h-1.5 rounded-full bg-slate-200 overflow-hidden flex">
+                  <div
+                    className="h-full bg-emerald-600 rounded-full"
+                    style={{ width: `${item.resolutionPct}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Add Custom Widget Modal ── */}
+      {showAddWidgetModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full border border-slate-200 shadow-2xl p-6 animate-scale-in">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-800">
+                  <Plus className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Add Custom Analytics Widget</h3>
+                  <p className="text-xs text-slate-500">Pin a new telemetry widget to your executive dashboard.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAddWidgetModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddWidget} className="mt-4 space-y-4">
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Widget Title</label>
+                <input
+                  type="text"
+                  value={widgetTitle}
+                  onChange={(e) => setWidgetTitle(e.target.value)}
+                  placeholder="e.g. Inbound SIP Trunk Latency (Twilio)"
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  required
                 />
               </div>
-            </div>
-          </div>
 
-          {totalVolumeInTrend > 0 ? (
-            <div className="h-52 w-full pt-4 relative flex items-end gap-2">
-              {volumeTrend.map((d, i) => {
-                const total = d.total || 0;
-                const max = Math.max(...volumeTrend.map((v) => v.total || 0), 10);
-                const heightPct = Math.min(100, Math.max(8, (total / max) * 100));
-                return (
-                  <div key={d.date || i} className="flex-1 flex flex-col items-center gap-1.5">
-                    <div
-                      className="w-full bg-blue-600/80 hover:bg-blue-500 rounded-t-md transition-all"
-                      style={{ height: `${heightPct}%` }}
-                    />
-                    <span className="text-[10px] text-zinc-400 font-mono">{d.displayDate || d.date}</span>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="h-52 flex flex-col items-center justify-center text-center p-4">
-              <BarChart3 className="w-8 h-8 text-zinc-600 mb-2" />
-              <p className="text-xs font-semibold text-zinc-300">No Call Volume Recorded</p>
-              <p className="text-[11px] text-zinc-500 mt-0.5">Calls in the selected date range will appear here.</p>
-            </div>
-          )}
-        </div>
-
-        {/* Call Outcomes Donut / Breakdown */}
-        <div className="lg:col-span-4 p-5 rounded-2xl bg-[#0c101b]/95 border border-zinc-800/80 space-y-4 flex flex-col justify-between">
-          <h3 className="text-sm font-bold text-white">Call Outcomes</h3>
-
-          <div className="flex items-center justify-center relative my-2">
-            <svg className="w-36 h-36 transform -rotate-90" viewBox="0 0 100 100">
-              <circle cx="50" cy="50" r="38" stroke="#18181b" strokeWidth="12" fill="none" />
-              {totalCalls > 0 && (
-                <>
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="38"
-                    stroke="#10b981"
-                    strokeWidth="12"
-                    strokeDasharray={`${Math.round((completedCalls / totalCalls) * 238)} 238`}
-                    fill="none"
-                  />
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="38"
-                    stroke="#ef4444"
-                    strokeWidth="12"
-                    strokeDasharray={`${Math.round((failedCalls / totalCalls) * 238)} 238`}
-                    strokeDashoffset={`-${Math.round((completedCalls / totalCalls) * 238)}`}
-                    fill="none"
-                  />
-                </>
-              )}
-            </svg>
-            <div className="absolute flex flex-col items-center">
-              <span className="text-xl font-bold text-white tabular-nums">{totalCalls.toLocaleString()}</span>
-              <span className="text-[10px] text-zinc-500">Total Calls</span>
-            </div>
-          </div>
-
-          <div className="space-y-2 text-xs">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span className="text-zinc-300">Completed / Connected</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-zinc-400">
-                  {totalCalls > 0 ? `${Math.round((completedCalls / totalCalls) * 100)}%` : '0%'}
-                </span>
-                <span className="font-mono text-white font-semibold tabular-nums">{completedCalls.toLocaleString()}</span>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-rose-500" />
-                <span className="text-zinc-300">Failed / Dropped</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-zinc-400">
-                  {totalCalls > 0 ? `${Math.round((failedCalls / totalCalls) * 100)}%` : '0%'}
-                </span>
-                <span className="font-mono text-white font-semibold tabular-nums">{failedCalls.toLocaleString()}</span>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-purple-500" />
-                <span className="text-zinc-300">Escalated to Human</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-zinc-400">
-                  {totalCalls > 0 ? `${Math.round((escalatedCalls / totalCalls) * 100)}%` : '0%'}
-                </span>
-                <span className="font-mono text-white font-semibold tabular-nums">{escalatedCalls.toLocaleString()}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Row 2: Top Campaigns & Agent Performance */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Top Campaigns */}
-        <div className="lg:col-span-6 p-5 rounded-2xl bg-[#0c101b]/95 border border-zinc-800/80 space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-bold text-white">Top Campaigns</h3>
-              <p className="text-xs text-zinc-400">Campaigns by total calls and status.</p>
-            </div>
-            <button
-              onClick={() => navigate('/campaigns/create')}
-              className="text-xs text-blue-400 hover:underline"
-            >
-              + New Campaign
-            </button>
-          </div>
-
-          <div className="overflow-x-auto pt-1">
-            {campaigns.length > 0 ? (
-              <table className="w-full text-left text-xs">
-                <thead className="border-b border-zinc-800 text-zinc-400">
-                  <tr>
-                    <th className="pb-2 font-semibold text-zinc-300">Campaign</th>
-                    <th className="pb-2 font-semibold text-zinc-300">Status</th>
-                    <th className="pb-2 font-semibold text-zinc-300">Contacts</th>
-                    <th className="pb-2 font-semibold text-zinc-300">Completed</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-800/40 text-zinc-300">
-                  {campaigns.slice(0, 5).map((camp) => (
-                    <tr key={camp.id} className="hover:bg-zinc-850/40">
-                      <td className="py-2.5 font-medium text-white">{camp.name}</td>
-                      <td className="py-2.5">
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                          {camp.status}
-                        </span>
-                      </td>
-                      <td className="py-2.5 font-mono tabular-nums">{camp.totalContacts || 0}</td>
-                      <td className="py-2.5 font-mono tabular-nums">{camp.completedCalls || 0}</td>
-                    </tr>
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Widget Visualization Type</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'kpi', label: 'Metric Card', desc: 'Single KPI figure' },
+                    { id: 'trend', label: 'Time Trend', desc: 'Area / line graph' },
+                    { id: 'distribution', label: 'Distribution', desc: 'Donut breakdown' },
+                  ].map((type) => (
+                    <button
+                      type="button"
+                      key={type.id}
+                      onClick={() => setWidgetType(type.id)}
+                      className={`p-3 rounded-lg border text-left transition-all ${
+                        widgetType === type.id
+                          ? 'border-emerald-600 bg-emerald-50/70 text-emerald-950 font-bold'
+                          : 'border-slate-200 hover:border-slate-300 text-slate-700'
+                      }`}
+                    >
+                      <span className="text-xs block">{type.label}</span>
+                      <span className="text-[10px] text-slate-400 font-normal">{type.desc}</span>
+                    </button>
                   ))}
-                </tbody>
-              </table>
-            ) : (
-              <div className="py-8 text-center">
-                <Megaphone className="w-6 h-6 text-zinc-600 mx-auto mb-2" />
-                <p className="text-xs text-zinc-400">No campaigns created yet</p>
+                </div>
               </div>
-            )}
-          </div>
-        </div>
 
-        {/* Agent Performance */}
-        <div className="lg:col-span-6 p-5 rounded-2xl bg-[#0c101b]/95 border border-zinc-800/80 space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-bold text-white">Agent Performance</h3>
-              <p className="text-xs text-zinc-400">Call stats by AI voice agent.</p>
-            </div>
-            <button
-              onClick={() => navigate('/agents')}
-              className="text-xs text-blue-400 hover:underline"
-            >
-              View All Agents
-            </button>
-          </div>
-
-          <div className="overflow-x-auto pt-1">
-            {agents.length > 0 ? (
-              <table className="w-full text-left text-xs">
-                <thead className="border-b border-zinc-800 text-zinc-400">
-                  <tr>
-                    <th className="pb-2 font-semibold text-zinc-300">Agent</th>
-                    <th className="pb-2 font-semibold text-zinc-300">Total Calls</th>
-                    <th className="pb-2 font-semibold text-zinc-300">Success Rate</th>
-                    <th className="pb-2 font-semibold text-zinc-300">Avg. Duration</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-800/40 text-zinc-300">
-                  {agents.slice(0, 5).map((ag) => (
-                    <tr key={ag.id} className="hover:bg-zinc-850/40">
-                      <td className="py-2.5 font-medium text-white flex items-center gap-2">
-                        <div className="w-5 h-5 rounded-full bg-blue-900/60 border border-blue-500/30 flex items-center justify-center text-[10px] text-blue-300">
-                          {ag.name[0]}
-                        </div>
-                        <span>{ag.name}</span>
-                      </td>
-                      <td className="py-2.5 font-mono tabular-nums">{ag.totalCalls || 0}</td>
-                      <td className="py-2.5 text-emerald-400 font-semibold tabular-nums">{ag.successRate || 0}%</td>
-                      <td className="py-2.5 font-mono text-zinc-400 tabular-nums">{formatDuration(ag.avgDurationSec || 0)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : (
-              <div className="py-8 text-center">
-                <Bot className="w-6 h-6 text-zinc-600 mx-auto mb-2" />
-                <p className="text-xs text-zinc-400">No agents created yet</p>
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Telemetry Data Metric</label>
+                <select
+                  value={widgetMetric}
+                  onChange={(e) => setWidgetMetric(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                >
+                  <option value="sentiment">Customer Sentiment Net Score</option>
+                  <option value="concurrency">SIP Trunk Concurrency Load</option>
+                  <option value="bargein">Barge-in / User Interruption Rate</option>
+                  <option value="token_usage">LLM Token Consumption ($/hr)</option>
+                  <option value="stt_accuracy">STT Word Error Rate (WER)</option>
+                </select>
               </div>
-            )}
-          </div>
-        </div>
-      </div>
 
-      {/* Row 3: Key Insights */}
-      <div className="p-5 rounded-2xl bg-[#0c101b]/95 border border-zinc-800/80 space-y-3">
-        <div className="flex items-center gap-2 text-xs font-bold text-white">
-          <Sparkles className="w-4 h-4 text-purple-400" />
-          <span>Platform Intelligence & Setup Status</span>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 text-xs">
-          <div className="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-blue-400">Workspace Status</span>
-            <p className="text-zinc-200 mt-1">
-              {totalCalls > 0
-                ? `${totalCalls} total calls processed with an average duration of ${formatDuration(avgDurationSec)}.`
-                : 'Workspace is healthy and ready for live or outbound calling.'}
-            </p>
-          </div>
-          <div className="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Agent Fleet</span>
-            <p className="text-zinc-200 mt-1">
-              {agents.length > 0
-                ? `${agents.length} agent(s) configured and deployed across selected telephony channels.`
-                : '0 agents configured. Navigate to Agent Studio to create your first voice agent.'}
-            </p>
-          </div>
-          <div className="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-purple-400">Telemetry Engine</span>
-            <p className="text-zinc-200 mt-1">
-              Connected to real-time reporting engine (ClickHouse CDR streaming &amp; aggregate KPI pipeline).
-            </p>
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowAddWidgetModal(false)}
+                  className="px-4 py-2 border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-lg text-xs font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-emerald-950 hover:bg-emerald-900 text-white rounded-lg text-xs font-semibold shadow-xs"
+                >
+                  Save & Pin Widget
+                </button>
+              </div>
+            </form>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

@@ -1,8 +1,9 @@
 import { apiClient, getActiveWorkspaceId } from './client';
 import { Campaign, CreateCampaignPayload, Audience, APIEnvelope } from '../types';
-import { MOCK_CAMPAIGNS } from '../utils/constants';
-
-let localCampaigns: Campaign[] = [];
+const requireData = <T,>(success: boolean | undefined, data: T | undefined, operation: string): T => {
+  if (success && data !== undefined && data !== null) return data;
+  throw new Error(`${operation} was not confirmed by the server.`);
+};
 
 const getScopedCampaignUrl = (subpath = ''): string => {
   const wsId = getActiveWorkspaceId();
@@ -21,104 +22,34 @@ const getScopedAudienceUrl = (subpath = ''): string => {
 };
 
 export const getCampaigns = async (): Promise<Campaign[]> => {
-  try {
-    const res = await apiClient.get<APIEnvelope<Campaign[]>>(getScopedCampaignUrl());
-    if (res.data?.success && res.data.data) {
-      return res.data.data;
-    }
-  } catch (err) {
-    console.warn('Campaign API unavailable, using local data', err);
-  }
-  return localCampaigns;
+  const res = await apiClient.get<APIEnvelope<Campaign[]>>(getScopedCampaignUrl());
+  return requireData(res.data?.success, res.data?.data, 'Loading campaigns');
 };
 
 export const createCampaign = async (payload: CreateCampaignPayload): Promise<Campaign> => {
-  try {
-    const res = await apiClient.post<APIEnvelope<Campaign>>(getScopedCampaignUrl(), payload);
-    if (res.data?.success && res.data.data) {
-      localCampaigns.unshift(res.data.data);
-      return res.data.data;
-    }
-  } catch (err) {
-    console.warn('Campaign API unavailable, creating campaign locally', err);
-  }
-
-  const newCampaign: Campaign = {
-    id: `camp-${Date.now()}`,
-    name: payload.name,
-    agentId: payload.agentId,
-    agentName: 'Selected Agent',
-    status: payload.scheduledAt ? 'scheduled' : 'running',
-    targetAudienceId: payload.targetAudienceId,
-    targetAudienceName: 'Selected Audience',
-    totalContacts: 150,
-    completedCalls: 0,
-    successfulCalls: 0,
-    failedCalls: 0,
-    scheduledAt: payload.scheduledAt || new Date().toISOString(),
-    startedAt: payload.scheduledAt ? undefined : new Date().toISOString(),
-    createdAt: new Date().toISOString(),
-  };
-
-  localCampaigns.unshift(newCampaign);
-  return newCampaign;
+  const res = await apiClient.post<APIEnvelope<Campaign>>(getScopedCampaignUrl(), payload);
+  return requireData(res.data?.success, res.data?.data, 'Creating campaign');
 };
 
 export const updateCampaignStatus = async (id: string, status: 'running' | 'paused' | 'completed'): Promise<boolean> => {
-  try {
-    const res = await apiClient.post<APIEnvelope<{ updated: boolean }>>(getScopedCampaignUrl(`/${id}/status`), { status });
-    if (res.data?.success) {
-      localCampaigns = localCampaigns.map((c) => (c.id === id ? { ...c, status } : c));
-      return true;
-    }
-  } catch (err) {
-    console.warn('Campaign status update API failed, updating locally', err);
-  }
-  localCampaigns = localCampaigns.map((c) => (c.id === id ? { ...c, status } : c));
-  return true;
+  const res = await apiClient.post<APIEnvelope<{ updated: boolean }>>(getScopedCampaignUrl(`/${id}/status`), { status });
+  return !!res.data?.success && !!res.data.data?.updated;
 };
 
 export const getAudiences = async (): Promise<Audience[]> => {
-  try {
-    const res = await apiClient.get<APIEnvelope<Audience[]>>(getScopedAudienceUrl());
-    if (res.data?.success && res.data.data) {
-      return res.data.data;
-    }
-  } catch (err) {
-    console.warn('Audiences API unavailable', err);
-  }
-  return [];
+  const res = await apiClient.get<APIEnvelope<Audience[]>>(getScopedAudienceUrl());
+  return requireData(res.data?.success, res.data?.data, 'Loading audiences');
 };
 
 export const createAudience = async (name: string, description?: string): Promise<Audience> => {
-  try {
-    const res = await apiClient.post<APIEnvelope<Audience>>(getScopedAudienceUrl(), { name, description });
-    if (res.data?.success && res.data.data) {
-      return res.data.data;
-    }
-  } catch (err) {
-    console.warn('Create audience API unavailable', err);
-  }
-  return {
-    id: `aud_${Date.now()}`,
-    name,
-    description,
-    contactCount: 0,
-    createdAt: new Date().toISOString(),
-  };
+  const res = await apiClient.post<APIEnvelope<Audience>>(getScopedAudienceUrl(), { name, description });
+  return requireData(res.data?.success, res.data?.data, 'Creating audience');
 };
 
 export const batchImportContactsCSV = async (audienceId: string, csvContent: string): Promise<{ importedCount: number }> => {
-  try {
-    const res = await apiClient.post<APIEnvelope<{ importedCount: number }>>(
-      getScopedAudienceUrl(`/${audienceId}/batch-import`),
-      { csvData: csvContent }
-    );
-    if (res.data?.success && res.data.data) {
-      return res.data.data;
-    }
-  } catch (err) {
-    console.warn('Batch import CSV failed, simulating import', err);
-  }
-  return { importedCount: 50 };
+  const res = await apiClient.post<APIEnvelope<{ importedCount: number }>>(
+    getScopedAudienceUrl(`/${audienceId}/batch-import`),
+    { csvData: csvContent }
+  );
+  return requireData(res.data?.success, res.data?.data, 'Importing contacts');
 };

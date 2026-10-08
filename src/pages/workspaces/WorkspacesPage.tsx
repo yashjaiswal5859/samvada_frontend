@@ -21,17 +21,14 @@ import { useWorkspace, Workspace } from '../../contexts/WorkspaceContext';
 import { useToast } from '../../contexts/ToastContext';
 
 export const WorkspacesPage: React.FC = () => {
-  const { allWorkspaces, currentWorkspace, switchWorkspace, createWorkspace, isOrgAdmin, currentUserRole, switchUserRole, organizationName } = useWorkspace();
+  const { allWorkspaces, currentWorkspace, switchWorkspace, createWorkspace, isOrgAdmin, organizationName } = useWorkspace();
   const toast = useToast();
 
   const [search, setSearch] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newWsName, setNewWsName] = useState('');
-  const [newWsSlug, setNewWsSlug] = useState('');
   const [newWsDesc, setNewWsDesc] = useState('');
-  const [newWsIcon, setNewWsIcon] = useState('💼');
-  const [newWsAdmin, setNewWsAdmin] = useState('');
-  const [newWsEmail, setNewWsEmail] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
 
   const filtered = allWorkspaces.filter(
     (w) =>
@@ -40,27 +37,31 @@ export const WorkspacesPage: React.FC = () => {
       w.adminName.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newWsName.trim()) return;
-
-    createWorkspace({
-      name: newWsName,
-      slug: newWsSlug || newWsName.toLowerCase().replace(/\s+/g, '-'),
-      icon: newWsIcon,
-      description: newWsDesc || 'Operational workspace for AI voice operations.',
-      adminName: newWsAdmin || 'Team Lead',
-      adminEmail: newWsEmail || 'admin@cleartrail.com',
-      monthlyMinuteLimit: 50000,
-      assignedPhoneNumbers: ['+91 80 4000 ' + Math.floor(1000 + Math.random() * 9000)],
-      escalationMembersCount: 4
-    });
-
-    toast.success(`Workspace "${newWsName}" created successfully!`);
-    setIsCreateModalOpen(false);
-    setNewWsName('');
-    setNewWsSlug('');
-    setNewWsDesc('');
+    setIsCreating(true);
+    try {
+      await createWorkspace({
+        name: newWsName.trim(),
+        slug: newWsName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+        icon: '💼',
+        description: newWsDesc.trim(),
+        adminName: '',
+        adminEmail: '',
+        monthlyMinuteLimit: 0,
+        assignedPhoneNumbers: null,
+        escalationMembersCount: null,
+      });
+      toast.success(`Workspace "${newWsName}" created.`);
+      setIsCreateModalOpen(false);
+      setNewWsName('');
+      setNewWsDesc('');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not create the workspace.');
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   return (
@@ -69,7 +70,7 @@ export const WorkspacesPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs text-zinc-400 mb-1">
-            <span>{organizationName || 'Clear Trail Technology'}</span>
+            <span>{organizationName}</span>
             <ChevronRight className="w-3.5 h-3.5" />
             <span className="text-white font-medium">System Settings</span>
             <ChevronRight className="w-3.5 h-3.5" />
@@ -87,32 +88,6 @@ export const WorkspacesPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Persona Switcher for demonstration / testing */}
-          <div className="bg-[#0c101b] border border-zinc-800 rounded-xl p-1 flex items-center gap-1 text-xs">
-            <button
-              onClick={() => {
-                switchUserRole('org_admin');
-                toast.info(`Switched view to: ${organizationName || 'Organization'} Admin (Full Org Access)`);
-              }}
-              className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer ${
-                isOrgAdmin ? 'bg-blue-600 text-white shadow-md' : 'text-zinc-400 hover:text-zinc-200'
-              }`}
-            >
-              👑 Org Admin
-            </button>
-            <button
-              onClick={() => {
-                switchUserRole('workspace_admin');
-                toast.info('Switched view to: Workspace Admin (Scoped Access)');
-              }}
-              className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer ${
-                !isOrgAdmin ? 'bg-purple-600 text-white shadow-md' : 'text-zinc-400 hover:text-zinc-200'
-              }`}
-            >
-              👔 Workspace Admin
-            </button>
-          </div>
-
           {isOrgAdmin && (
             <button
               onClick={() => setIsCreateModalOpen(true)}
@@ -125,33 +100,15 @@ export const WorkspacesPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Role Banner */}
-      {!isOrgAdmin && (
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex items-center justify-between text-xs text-amber-200">
-          <div className="flex items-center gap-2.5">
-            <Shield className="w-4 h-4 text-amber-400 shrink-0" />
-            <span>
-              <strong>Limited Access Mode:</strong> You are currently viewing workspace-scoped resources.
-            </span>
-          </div>
-          <button
-            onClick={() => switchUserRole('org_admin')}
-            className="text-amber-400 font-bold underline hover:text-amber-300 ml-4 shrink-0 cursor-pointer"
-          >
-            Switch to Org Admin
-          </button>
-        </div>
-      )}
-
       {/* Overview Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 min-[480px]:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="p-4 rounded-2xl bg-[#0c101b]/90 border border-zinc-800/80 backdrop-blur-xl">
           <div className="flex items-center justify-between">
             <span className="text-xs text-zinc-400 font-medium">Total Workspaces</span>
             <Layers className="w-4 h-4 text-blue-400" />
           </div>
           <p className="text-2xl font-bold text-white mt-1">{allWorkspaces.length}</p>
-          <p className="text-[11px] text-zinc-400 mt-1">100% data & call isolated</p>
+          <p className="text-[11px] text-zinc-400 mt-1">Active workspace records</p>
         </div>
 
         <div className="p-4 rounded-2xl bg-[#0c101b]/90 border border-zinc-800/80 backdrop-blur-xl">
@@ -160,9 +117,9 @@ export const WorkspacesPage: React.FC = () => {
             <Sparkles className="w-4 h-4 text-emerald-400" />
           </div>
           <p className="text-2xl font-bold text-white mt-1">
-            {allWorkspaces.reduce((acc, w) => acc + w.activeAgentsCount, 0)}
+            {allWorkspaces.every((w) => w.activeAgentsCount === null) ? '—' : allWorkspaces.reduce((acc, w) => acc + (w.activeAgentsCount || 0), 0)}
           </p>
-          <p className="text-[11px] text-zinc-400 mt-1">Across 5 business units</p>
+          <p className="text-[11px] text-zinc-400 mt-1">Reported for loaded workspaces</p>
         </div>
 
         <div className="p-4 rounded-2xl bg-[#0c101b]/90 border border-zinc-800/80 backdrop-blur-xl">
@@ -171,9 +128,9 @@ export const WorkspacesPage: React.FC = () => {
             <Radio className="w-4 h-4 text-rose-400 animate-pulse" />
           </div>
           <p className="text-2xl font-bold text-white mt-1">
-            {allWorkspaces.reduce((acc, w) => acc + w.liveCallsCount, 0)}
+            {allWorkspaces.every((w) => w.liveCallsCount === null) ? '—' : allWorkspaces.reduce((acc, w) => acc + (w.liveCallsCount || 0), 0)}
           </p>
-          <p className="text-[11px] text-emerald-400 mt-1">● Currently connected</p>
+          <p className="text-[11px] text-zinc-400 mt-1">Live call count when available</p>
         </div>
 
         <div className="p-4 rounded-2xl bg-[#0c101b]/90 border border-zinc-800/80 backdrop-blur-xl">
@@ -182,9 +139,9 @@ export const WorkspacesPage: React.FC = () => {
             <Users className="w-4 h-4 text-purple-400" />
           </div>
           <p className="text-2xl font-bold text-white mt-1">
-            {allWorkspaces.reduce((acc, w) => acc + w.escalationMembersCount, 0)}
+            {allWorkspaces.every((w) => w.escalationMembersCount === null) ? '—' : allWorkspaces.reduce((acc, w) => acc + (w.escalationMembersCount || 0), 0)}
           </p>
-          <p className="text-[11px] text-zinc-400 mt-1">On-duty for warm transfers</p>
+          <p className="text-[11px] text-zinc-400 mt-1">Reported escalation team members</p>
         </div>
       </div>
 
@@ -206,7 +163,7 @@ export const WorkspacesPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {filtered.map((ws) => {
           const isSelected = currentWorkspace.id === ws.id;
-          const usagePercent = Math.min(100, Math.round((ws.monthlyMinutesUsed / ws.monthlyMinuteLimit) * 100));
+          const usagePercent = ws.monthlyMinutesUsed !== null && ws.monthlyMinuteLimit ? Math.min(100, Math.round((ws.monthlyMinutesUsed / ws.monthlyMinuteLimit) * 100)) : null;
 
           return (
             <div
@@ -237,7 +194,7 @@ export const WorkspacesPage: React.FC = () => {
                       <span className="text-xs font-mono text-zinc-400 bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800">
                         {ws.id}
                       </span>
-                      <span className="text-xs text-zinc-400">• Manager: {ws.adminName}</span>
+                      {ws.adminName !== '—' && <span className="text-xs text-zinc-400">• Manager: {ws.adminName}</span>}
                     </div>
                   </div>
                 </div>
@@ -263,22 +220,21 @@ export const WorkspacesPage: React.FC = () => {
               {/* Isolation Details */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4 pt-3 border-t border-zinc-800/60 text-center">
                 <div className="p-2 rounded-xl bg-zinc-900/60 border border-zinc-850">
-                  <p className="text-xs font-bold text-white">{ws.activeAgentsCount}</p>
+                  <p className="text-xs font-bold text-white">{ws.activeAgentsCount ?? '—'}</p>
                   <p className="text-[10px] text-zinc-400">AI Agents</p>
                 </div>
                 <div className="p-2 rounded-xl bg-zinc-900/60 border border-zinc-850">
                   <p className="text-xs font-bold text-emerald-400 flex items-center justify-center gap-1">
-                    {ws.liveCallsCount > 0 && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />}
-                    {ws.liveCallsCount}
+                    {ws.liveCallsCount === null ? '—' : ws.liveCallsCount}
                   </p>
                   <p className="text-[10px] text-zinc-400">Live Calls</p>
                 </div>
                 <div className="p-2 rounded-xl bg-zinc-900/60 border border-zinc-850">
-                  <p className="text-xs font-bold text-white">{ws.assignedPhoneNumbers.length}</p>
+                  <p className="text-xs font-bold text-white">{ws.assignedPhoneNumbers?.length ?? '—'}</p>
                   <p className="text-[10px] text-zinc-400">Phone DIDs</p>
                 </div>
                 <div className="p-2 rounded-xl bg-zinc-900/60 border border-zinc-850">
-                  <p className="text-xs font-bold text-purple-400">{ws.escalationMembersCount}</p>
+                  <p className="text-xs font-bold text-purple-400">{ws.escalationMembersCount ?? '—'}</p>
                   <p className="text-[10px] text-zinc-400">Escalation Reps</p>
                 </div>
               </div>
@@ -288,15 +244,15 @@ export const WorkspacesPage: React.FC = () => {
                 <div className="flex items-center justify-between text-[11px] text-zinc-400 mb-1">
                   <span>Monthly Minutes Quota</span>
                   <span className="font-mono text-zinc-300">
-                    {ws.monthlyMinutesUsed.toLocaleString()} / {ws.monthlyMinuteLimit.toLocaleString()} mins ({usagePercent}%)
+                    {usagePercent === null ? 'Usage unavailable' : `${ws.monthlyMinutesUsed?.toLocaleString()} / ${ws.monthlyMinuteLimit?.toLocaleString()} mins (${usagePercent}%)`}
                   </span>
                 </div>
                 <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all ${
-                      usagePercent > 85 ? 'bg-rose-500' : usagePercent > 60 ? 'bg-amber-500' : 'bg-blue-500'
+                      usagePercent !== null && usagePercent > 85 ? 'bg-rose-500' : (usagePercent ?? 0) > 60 ? 'bg-amber-500' : 'bg-blue-500'
                     }`}
-                    style={{ width: `${usagePercent}%` }}
+                    style={{ width: `${usagePercent ?? 0}%` }}
                   />
                 </div>
               </div>
@@ -332,35 +288,9 @@ export const WorkspacesPage: React.FC = () => {
                   required
                   placeholder="e.g. VIP Concierge & High Value Accounts"
                   value={newWsName}
-                  onChange={(e) => {
-                    setNewWsName(e.target.value);
-                    setNewWsSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, '-'));
-                  }}
+                  onChange={(e) => setNewWsName(e.target.value)}
                   className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2 text-white placeholder:text-zinc-400 focus:outline-none focus:border-blue-500"
                 />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-zinc-300 font-semibold mb-1">Workspace ID / Slug</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="vip-concierge"
-                    value={newWsSlug}
-                    onChange={(e) => setNewWsSlug(e.target.value)}
-                    className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2 text-white font-mono placeholder:text-zinc-400 focus:outline-none focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-zinc-300 font-semibold mb-1">Icon (Emoji)</label>
-                  <input
-                    type="text"
-                    value={newWsIcon}
-                    onChange={(e) => setNewWsIcon(e.target.value)}
-                    className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500"
-                  />
-                </div>
               </div>
 
               <div>
@@ -372,29 +302,6 @@ export const WorkspacesPage: React.FC = () => {
                   onChange={(e) => setNewWsDesc(e.target.value)}
                   className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2 text-white placeholder:text-zinc-400 focus:outline-none focus:border-blue-500"
                 />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-zinc-300 font-semibold mb-1">Workspace Admin Name</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Vikram Seth"
-                    value={newWsAdmin}
-                    onChange={(e) => setNewWsAdmin(e.target.value)}
-                    className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2 text-white placeholder:text-zinc-400 focus:outline-none focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-zinc-300 font-semibold mb-1">Admin Corporate Email</label>
-                  <input
-                    type="email"
-                    placeholder="admin@cleartrail.com"
-                    value={newWsEmail}
-                    onChange={(e) => setNewWsEmail(e.target.value)}
-                    className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2 text-white placeholder:text-zinc-400 focus:outline-none focus:border-blue-500"
-                  />
-                </div>
               </div>
 
               <div className="pt-2 flex items-center justify-end gap-2 border-t border-zinc-800">
@@ -409,7 +316,7 @@ export const WorkspacesPage: React.FC = () => {
                   type="submit"
                   className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold cursor-pointer"
                 >
-                  Create & Isolate Workspace
+                  {isCreating ? 'Creating…' : 'Create workspace'}
                 </button>
               </div>
             </form>

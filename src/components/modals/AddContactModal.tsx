@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
-import { createContact } from '../../api/contacts';
+import { batchImportContactsCSV, createContact, getAudiences } from '../../api/contacts';
 import { Contact } from '../../types';
 import { UserPlus, Upload } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
@@ -10,7 +10,7 @@ import { useToast } from '../../contexts/ToastContext';
 interface AddContactModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (contact: Contact) => void;
+  onSuccess: (contact?: Contact) => void;
 }
 
 export const AddContactModal: React.FC<AddContactModalProps> = ({
@@ -25,6 +25,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
   const [email, setEmail] = useState('');
   const [company, setCompany] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
 
   const handleSubmitSingle = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,8 +42,36 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
       setEmail('');
       setCompany('');
     } catch (err) {
-      console.error(err);
+      toast.error(err instanceof Error ? err.message : 'Could not add the contact.');
+    } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleCsvChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      toast.error('Choose a CSV file.');
+      event.target.value = '';
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const [audiences, csvContent] = await Promise.all([
+        getAudiences(),
+        file.text(),
+      ]);
+      if (!audiences[0]) throw new Error('Create an audience before importing contacts.');
+      const result = await batchImportContactsCSV(audiences[0].id, csvContent);
+      toast.success(`${result.importedCount} contacts imported into ${audiences[0].name}.`);
+      onSuccess();
+      onClose();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not import the CSV file.');
+    } finally {
+      setIsLoading(false);
+      event.target.value = '';
     }
   };
 
@@ -119,18 +148,17 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
         </form>
       ) : (
         <div className="space-y-4 text-center py-6">
-          <div className="border-2 border-dashed border-zinc-700/80 rounded-2xl p-8 hover:border-indigo-500 transition-colors cursor-pointer bg-[#181922]">
+          <button type="button" disabled={isLoading} onClick={() => fileInput.current?.click()} className="w-full border-2 border-dashed border-zinc-700/80 rounded-2xl p-8 hover:border-indigo-500 transition-colors cursor-pointer bg-[#181922] disabled:opacity-60">
             <Upload className="w-10 h-10 text-indigo-400 mx-auto mb-3" />
             <p className="text-sm font-semibold text-zinc-200">Drag and drop your CSV file here</p>
             <p className="text-xs text-zinc-500 mt-1">Supports columns: Name, Phone, Email, Company</p>
-          </div>
+          </button>
+          <input ref={fileInput} type="file" accept=".csv,text/csv" className="sr-only" onChange={handleCsvChange} />
           <Button
             type="button"
             fullWidth
-            onClick={() => {
-              toast.success('CSV uploaded successfully! 250 contacts imported.');
-              onClose();
-            }}
+            isLoading={isLoading}
+            onClick={() => fileInput.current?.click()}
           >
             Select CSV File from Computer
           </Button>

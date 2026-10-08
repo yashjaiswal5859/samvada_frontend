@@ -68,36 +68,23 @@ export const LiveVoiceDemoCard: React.FC<{ className?: string }> = ({ className 
 
       ctx.clearRect(0, 0, width, height);
 
-      // 1. Draw subtle background dotted grid matrix
-      ctx.fillStyle = 'rgba(56, 189, 248, 0.08)';
-      const dotSpacing = 16;
-      for (let x = 8; x < width; x += dotSpacing) {
-        for (let y = 6; y < height; y += dotSpacing) {
-          // Fade dots near the edges
-          const distX = Math.abs(x - width / 2) / (width / 2);
-          const alpha = Math.max(0, (1 - distX * 0.7) * 0.12);
-          ctx.fillStyle = `rgba(56, 189, 248, ${alpha})`;
-          ctx.fillRect(x, y, 1.2, 1.2);
-        }
-      }
-
       // 2. Gradients for Left (Precision Cyan) and Right (Cobalt/Royal Blue)
       const gradFull = ctx.createLinearGradient(0, 0, width, 0);
-      gradFull.addColorStop(0, 'rgba(14, 165, 233, 0)');
-      gradFull.addColorStop(0.12, 'rgba(56, 189, 248, 0.75)');
-      gradFull.addColorStop(0.38, 'rgba(37, 99, 235, 0.95)');
+      gradFull.addColorStop(0, 'rgba(99, 102, 241, 0)');
+      gradFull.addColorStop(0.12, 'rgba(79, 70, 229, 0.8)');
+      gradFull.addColorStop(0.38, 'rgba(37, 99, 235, 1)');
       gradFull.addColorStop(0.48, 'rgba(56, 189, 248, 1)');
-      gradFull.addColorStop(0.52, 'rgba(99, 102, 241, 0.95)');
-      gradFull.addColorStop(0.72, 'rgba(79, 70, 229, 0.95)');
-      gradFull.addColorStop(0.88, 'rgba(59, 130, 246, 0.65)');
-      gradFull.addColorStop(1, 'rgba(37, 99, 235, 0)');
+      gradFull.addColorStop(0.52, 'rgba(99, 102, 241, 1)');
+      gradFull.addColorStop(0.72, 'rgba(79, 70, 229, 1)');
+      gradFull.addColorStop(0.88, 'rgba(59, 130, 246, 0.75)');
+      gradFull.addColorStop(1, 'rgba(99, 102, 241, 0)');
 
       const gradSecondary = ctx.createLinearGradient(0, 0, width, 0);
-      gradSecondary.addColorStop(0, 'rgba(2, 132, 199, 0)');
-      gradSecondary.addColorStop(0.2, 'rgba(6, 182, 212, 0.45)');
-      gradSecondary.addColorStop(0.5, 'rgba(99, 102, 241, 0.5)');
-      gradSecondary.addColorStop(0.8, 'rgba(59, 130, 246, 0.45)');
-      gradSecondary.addColorStop(1, 'rgba(37, 99, 235, 0)');
+      gradSecondary.addColorStop(0, 'rgba(99, 102, 241, 0)');
+      gradSecondary.addColorStop(0.2, 'rgba(139, 92, 246, 0.55)');
+      gradSecondary.addColorStop(0.5, 'rgba(79, 70, 229, 0.6)');
+      gradSecondary.addColorStop(0.8, 'rgba(59, 130, 246, 0.55)');
+      gradSecondary.addColorStop(1, 'rgba(99, 102, 241, 0)');
 
       // 3. Helper to draw smooth undulating wave
       const drawSineWave = (
@@ -140,18 +127,18 @@ export const LiveVoiceDemoCard: React.FC<{ className?: string }> = ({ className 
       drawSineWave(
         (u) => 14 * Math.sin(u * 2.8 * Math.PI - t * 1.4) + 4 * Math.cos(u * 5.6 * Math.PI + t * 0.9),
         gradSecondary,
-        1.6,
-        6,
-        'rgba(99, 102, 241, 0.4)'
+        2.0,
+        8,
+        'rgba(139, 92, 246, 0.5)'
       );
 
       // Hero Primary Glowing Wave
       drawSineWave(
         (u) => 18 * Math.sin(u * 2.2 * Math.PI - t * 1.8) + 6 * Math.sin(u * 4.4 * Math.PI + t * 1.2),
         gradFull,
-        2.8,
-        12,
-        'rgba(56, 189, 248, 0.85)'
+        3.2,
+        14,
+        'rgba(79, 70, 229, 0.9)'
       );
 
       // 4. Center Audio Equalizer Bars (Exact match to reference image!)
@@ -173,11 +160,11 @@ export const LiveVoiceDemoCard: React.FC<{ className?: string }> = ({ className 
         const topY = midY - barHeight / 2;
         const bottomY = midY + barHeight / 2;
 
-        ctx.strokeStyle = '#38bdf8';
+        ctx.strokeStyle = '#6366f1';
         ctx.lineWidth = barWidth;
         ctx.lineCap = 'round';
-        ctx.shadowColor = '#38bdf8';
-        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#6366f1';
+        ctx.shadowBlur = 8;
 
         ctx.moveTo(bx, topY);
         ctx.lineTo(bx, bottomY);
@@ -200,12 +187,12 @@ export const LiveVoiceDemoCard: React.FC<{ className?: string }> = ({ className 
 
   return (
     <div className={`w-full max-w-xl ${className}`}>
-      {/* Outer Card with deep glass effect & subtle border */}
-      <div className="relative rounded-2xl bg-[#090f1d]/90 border border-blue-900/40 p-5 sm:p-6 shadow-2xl backdrop-blur-xl overflow-hidden">
+      {/* Outer Card — light with subtle border and shadow */}
+      <div className="relative rounded-2xl bg-white border border-gray-200 p-5 sm:p-6 shadow-md overflow-hidden">
         
-        {/* Soft subtle ambient depth */}
-        <div className="absolute -top-12 -left-12 w-48 h-48 bg-blue-500/8 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-12 -right-12 w-48 h-48 bg-indigo-500/8 rounded-full blur-3xl pointer-events-none" />
+        {/* Subtle ambient depth */}
+        <div className="absolute -top-12 -left-12 w-48 h-48 bg-blue-100/40 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-12 -right-12 w-48 h-48 bg-indigo-100/40 rounded-full blur-3xl pointer-events-none" />
 
         {/* --- TOP ROW: CUSTOMER MESSAGE + "INTERACTIVE VOICE STREAM" PILL --- */}
         <div className="flex items-start justify-between gap-4">
@@ -219,11 +206,11 @@ export const LiveVoiceDemoCard: React.FC<{ className?: string }> = ({ className 
 
             {/* Bubble with Customer label */}
             <div className="flex flex-col items-start">
-              <span className="text-[11px] font-medium text-sky-400 mb-1">
+              <span className="text-[11px] font-medium text-blue-600 mb-1">
                 Customer
               </span>
-              <div className="bg-[#0b1325]/95 border border-sky-500/25 rounded-2xl rounded-tl-sm px-4 py-3 shadow-md">
-                <p className="text-xs sm:text-[13px] text-zinc-100 font-normal leading-relaxed">
+              <div className="bg-blue-50 border border-blue-200/80 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
+                <p className="text-xs sm:text-[13px] text-gray-800 font-normal leading-relaxed">
                   {current.customerText}
                 </p>
               </div>
@@ -232,7 +219,7 @@ export const LiveVoiceDemoCard: React.FC<{ className?: string }> = ({ className 
 
           {/* Top Right: "Interactive Voice Stream •" Pill */}
           <div className="flex-shrink-0">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0a162b] border border-blue-500/35 text-blue-300 text-[11px] font-medium shadow-sm shadow-blue-500/10">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-600 text-[11px] font-medium shadow-sm">
               {/* Mini audio equalizer icon */}
               <span className="flex items-center gap-0.5 h-3">
                 <span className="w-0.5 h-2 bg-blue-400 rounded-full" />
@@ -258,18 +245,18 @@ export const LiveVoiceDemoCard: React.FC<{ className?: string }> = ({ className 
         <div className="flex items-end justify-end gap-3 w-full">
           {/* Bubble with Samvada AI label */}
           <div className="flex flex-col items-start max-w-[78%]">
-            <span className="text-[11px] font-medium text-indigo-400 mb-1 pl-1">
+            <span className="text-[11px] font-medium text-indigo-600 mb-1 pl-1">
               Samvada AI
             </span>
-            <div className="bg-[#0e1629]/95 border border-indigo-500/25 rounded-2xl rounded-tr-sm px-4 py-3 shadow-md text-left">
-              <p className="text-xs sm:text-[13px] text-zinc-100 font-normal leading-relaxed">
+            <div className="bg-indigo-50 border border-indigo-200/80 rounded-2xl rounded-tr-sm px-4 py-3 shadow-sm text-left">
+              <p className="text-xs sm:text-[13px] text-gray-800 font-normal leading-relaxed">
                 {current.aiText}
               </p>
             </div>
           </div>
 
-          {/* Right Avatar: Dark circle with glowing blue audio waveform bars */}
-          <div className="w-10 h-10 rounded-full bg-[#0c1427] border border-indigo-500/30 flex items-center justify-center flex-shrink-0 shadow-md mb-0.5">
+          {/* Right Avatar: Light circle with indigo waveform bars */}
+          <div className="w-10 h-10 rounded-full bg-indigo-50 border border-indigo-200 flex items-center justify-center flex-shrink-0 shadow-sm mb-0.5">
             <div className="flex items-center gap-0.5 h-4">
               <span className="w-0.5 h-2 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
               <span className="w-0.5 h-4 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
@@ -289,8 +276,8 @@ export const LiveVoiceDemoCard: React.FC<{ className?: string }> = ({ className 
               aria-label={`Switch to scenario ${turn.id + 1}`}
               className={`rounded-full transition-all duration-300 ${
                 activeTurn === turn.id
-                  ? 'w-2 h-2 bg-sky-400 shadow-sm shadow-sky-400/50'
-                  : 'w-1.5 h-1.5 bg-zinc-600/70 hover:bg-zinc-500'
+                  ? 'w-2 h-2 bg-indigo-500 shadow-sm shadow-indigo-400/50'
+                  : 'w-1.5 h-1.5 bg-gray-300 hover:bg-gray-400'
               }`}
             />
           ))}

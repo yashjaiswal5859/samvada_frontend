@@ -50,7 +50,7 @@ const DEMO_PERSONAS: DemoPersona[] = [
     gender: 'female',
     greeting: "Namaste! Welcome to SmileCare Clinics. I am Aanya, your virtual care coordinator. How can I help you with appointments or treatments today?",
     description: 'Handles dental appointment bookings, price estimates, and emergency symptom triage with empathy.',
-    badges: ['< 290ms Latency', 'HIPAA Certified', 'Hinglish & English'],
+    badges: ['Sample conversation', 'Hinglish & English'],
     suggestedPrompts: [
       'What are your root canal charges?',
       'Can I book an appointment for tomorrow at 4 PM?',
@@ -110,9 +110,9 @@ const DEMO_PERSONAS: DemoPersona[] = [
       'Can we book a 20-minute architecture demo?'
     ],
     knowledgeResponses: {
-      'concurrent': "Our distributed SIP architecture easily handles over 25,000 concurrent calls with guaranteed sub-350 millisecond turn-around latency. Are you planning high-volume inbound or outbound campaigns?",
+      'concurrent': "Capacity depends on your deployment and plan. Contact the team to discuss your expected call volume and requirements.",
       'integrate': "Yes! We have native bilateral integrations with HubSpot, Salesforce, Zendesk, as well as SIP trunking with Twilio, Exotel, and Tata Teleservices.",
-      'pricing': "Our Enterprise plan is usage-based at ₹1.80 per minute with zero server overhead, including SOC 2 compliance and custom LLM prompt finetuning.",
+      'pricing': "This interactive demo uses sample responses. Contact the team for current pricing and available security commitments.",
       'demo': "I would love to set that up! Our Solutions Architect has an open slot this Friday at 3:00 PM IST or Monday at 11:00 AM IST. Which works better for your calendar?",
     },
     defaultReply: "That sounds like a great use case for voice automation! Our team specializes in exactly this. Would you like me to block a dedicated technical walk-through with our engineering team?"
@@ -460,13 +460,13 @@ export const LiveDemoPage: React.FC = () => {
         <div className="lg:col-span-4 space-y-5">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/25 text-blue-400 text-xs font-semibold uppercase tracking-wider mb-2">
-              <span>ZERO SIGNUP REQUIRED</span>
+              <span>INTERACTIVE SAMPLE</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight leading-tight">
               Hear Voice AI That Sounds Truly Human
             </h1>
             <p className="text-xs sm:text-sm text-zinc-400 mt-2 leading-relaxed">
-              Select an enterprise persona below and click <strong>Start Live Call</strong> to test sub-second voice interactions right from your browser.
+              Explore sample personas and responses. This demo does not connect to a real business, book appointments, access customer records, or issue payments.
             </p>
           </div>
 
@@ -520,22 +520,13 @@ export const LiveDemoPage: React.FC = () => {
             })}
           </div>
 
-          {/* SLA Reassurance Card */}
+          {/* Demo scope */}
           <div className="p-4 rounded-2xl bg-zinc-900/40 border border-zinc-800/80 space-y-3">
             <div className="flex items-center gap-2 text-xs font-semibold text-white">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span>Production-Grade Architecture</span>
+              <ShieldCheck className="w-4 h-4 text-blue-400" />
+              <span>Sample environment</span>
             </div>
-            <div className="grid grid-cols-2 gap-2 text-[11px] text-zinc-400">
-              <div className="p-2 rounded-xl bg-zinc-950/60 border border-zinc-800/50">
-                <span className="block font-bold text-white">&lt; 350ms</span>
-                <span>Response Latency</span>
-              </div>
-              <div className="p-2 rounded-xl bg-zinc-950/60 border border-zinc-800/50">
-                <span className="block font-bold text-emerald-400">99.99%</span>
-                <span>Uptime SLA</span>
-              </div>
-            </div>
+            <p className="text-[11px] leading-relaxed text-zinc-400">Names, businesses, conversation details, and outcomes shown here are fictional examples. No real-world action is performed.</p>
           </div>
         </div>
 

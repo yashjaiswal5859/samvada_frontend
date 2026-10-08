@@ -117,7 +117,7 @@ export const ProfileSetupPage: React.FC = () => {
 
         <form onSubmit={handleSubmit} className="flex flex-col">
           {/* First name & Last name (2 columns) */}
-          <div className="grid grid-cols-2 gap-3.5 mb-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mb-5">
             <div>
               <label className="block text-xs font-medium text-zinc-300 mb-1.5">
                 First name<span className="text-red-500">*</span>

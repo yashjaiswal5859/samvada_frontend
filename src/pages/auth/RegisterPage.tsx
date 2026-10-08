@@ -214,14 +214,7 @@ export const RegisterPage: React.FC = () => {
           </div>
         </Link>
 
-        <div className="flex items-center gap-2.5 sm:gap-3">
-          <Link
-            to="/demo"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-lg shadow-blue-500/20 transition-all active:scale-[0.98]"
-          >
-            <Phone className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Try</span> Live Demo
-          </Link>
+        <div className="flex items-center gap-3">
           <span className="text-sm text-zinc-400 hidden md:inline">Already have an account?</span>
           <Link
             to="/login"
@@ -509,13 +502,13 @@ export const RegisterPage: React.FC = () => {
               <span>&lt; 350ms Latency</span>
             </div>
             <div className="flex items-center gap-1.5 text-zinc-300 font-medium">
-              <span>🛡️ SOC 2 Type II Certified</span>
+              <span>🛡️ Workspace controls</span>
             </div>
             <div className="flex items-center gap-1.5 text-zinc-300 font-medium">
-              <span>🔒 HIPAA & GDPR Ready</span>
+              <span>🔒 Configurable agent behavior</span>
             </div>
             <div className="flex items-center gap-1.5 text-zinc-300 font-medium">
-              <span>⚡ 99.99% Uptime SLA</span>
+              <span>⚡ Usage visibility</span>
             </div>
           </div>
         </div>

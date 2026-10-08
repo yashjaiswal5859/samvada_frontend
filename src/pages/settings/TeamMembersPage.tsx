@@ -144,7 +144,7 @@ export const TeamMembersPage: React.FC = () => {
       />
 
       {/* 3 Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 min-[480px]:grid-cols-2 lg:grid-cols-3 gap-4">
         <div className="p-4 rounded-2xl bg-[#0c101b]/95 border border-zinc-800/80 flex items-center justify-between">
           <div>
             <span className="text-xs text-zinc-400 font-medium">Total Members</span>

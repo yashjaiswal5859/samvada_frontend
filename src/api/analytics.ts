@@ -60,9 +60,10 @@ export const getAnalyticsSummary = async (): Promise<AnalyticsSummary> => {
       };
     }
   } catch (err) {
-    console.warn('Analytics summary API unavailable, using zeroed metrics', err);
+    console.warn('Analytics summary API unavailable', err);
+    throw new Error('Analytics summary is temporarily unavailable. Please try again.');
   }
-  return { ...EMPTY_ANALYTICS };
+  throw new Error('Analytics summary was not confirmed by the server.');
 };
 
 export const getVolumeTrend = async (days = 30): Promise<AnalyticsSummary['dailyCallVolume']> => {

@@ -142,19 +142,11 @@ export const LiveCallConsolePage: React.FC = () => {
           </span>
         </div>
 
-        <div className="flex items-center gap-2.5">
-          <button
-            onClick={() => navigate('/demo')}
-            className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-md shadow-blue-600/20 transition-all cursor-pointer"
-          >
-            <Phone className="w-3.5 h-3.5" />
-            <span>Launch Live Demo Agent</span>
-          </button>
-        </div>
+
       </div>
 
       {/* 4 Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 min-[480px]:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="p-5 rounded-2xl bg-[#0c101b]/95 border border-zinc-800/80 backdrop-blur-xl shadow-lg flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-emerald-950/60 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
             <Phone className="w-6 h-6" />
@@ -240,11 +232,11 @@ export const LiveCallConsolePage: React.FC = () => {
               </div>
               <div className="flex items-center justify-center gap-3 pt-2">
                 <button
-                  onClick={() => navigate('/demo')}
+                  onClick={() => navigate('/calls')}
                   className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center gap-2 shadow-lg shadow-blue-600/25 transition-all cursor-pointer"
                 >
-                  <Phone className="w-3.5 h-3.5" />
-                  <span>Start Test Call</span>
+                  <History className="w-3.5 h-3.5" />
+                  <span>View Call History</span>
                 </button>
                 <button
                   onClick={() => navigate('/calls')}

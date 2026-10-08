@@ -31,7 +31,7 @@ export const VerifyEmailPage: React.FC = () => {
   const location = useLocation();
 
   const queryParams = new URLSearchParams(location.search);
-  const email = queryParams.get('email') || 'yash@acme.com';
+  const email = queryParams.get('email') || '';
   const requestId = queryParams.get('requestId') || 'req-default-id';
 
   useEffect(() => {
@@ -280,7 +280,7 @@ export const VerifyEmailPage: React.FC = () => {
 
               <div className="text-center">
                 <Link
-                  to="/register"
+                  to="/login"
                   className="text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors"
                 >
                   Change email address

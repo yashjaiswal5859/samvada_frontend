@@ -12,7 +12,8 @@ import { ForgotPasswordPage } from '../pages/auth/ForgotPasswordPage';
 import { VerifyEmailPage } from '../pages/auth/VerifyEmailPage';
 import { ProfileSetupPage } from '../pages/onboarding/ProfileSetupPage';
 import { IndustrySelectPage } from '../pages/onboarding/IndustrySelectPage';
-import { LiveDemoPage } from '../pages/demo/LiveDemoPage';
+
+import { LandingPage } from '../pages/landing/LandingPage';
 
 // Portal Core Pages
 import { HomePage } from '../pages/home/HomePage';
@@ -22,6 +23,8 @@ import { DashboardOverviewPage } from '../pages/dashboard/DashboardOverviewPage'
 import { AgentListPage } from '../pages/agents/AgentListPage';
 import { AgentCreatePage } from '../pages/agents/AgentCreatePage';
 import { AiAgentStudioPage } from '../pages/agents/AiAgentStudioPage';
+import { AgentStudioPage } from '../pages/agents/AgentStudioPage';
+import { VoicesPage } from '../pages/voices/VoicesPage';
 import { KnowledgebasePage } from '../pages/knowledge/KnowledgebasePage';
 import { IntegrationsPage } from '../pages/integrations/IntegrationsPage';
 
@@ -37,6 +40,7 @@ import { CallDetailPage } from '../pages/conversations/CallDetailPage';
 import { LiveCallConsolePage } from '../pages/conversations/LiveCallConsolePage';
 import { NotificationsPage } from '../pages/notifications/NotificationsPage';
 import { AnalyticsPage } from '../pages/analytics/AnalyticsPage';
+import { ObservabilityPage } from '../pages/observability/ObservabilityPage';
 
 // Settings & Help Module
 import { SettingsPage } from '../pages/settings/SettingsPage';
@@ -81,17 +85,9 @@ export const AppRouter: React.FC = () => {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Root Route — Redirect based on Auth & Onboarding State */}
-        <Route
-          path="/"
-          element={
-            isAuthenticated && user ? (
-              <Navigate to={getOnboardingRoute(user)} replace />
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
-        />
+        {/* Public Enterprise Landing Page */}
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/landing" element={<LandingPage />} />
 
         {/* Public Auth Routes */}
         <Route
@@ -104,19 +100,10 @@ export const AppRouter: React.FC = () => {
             )
           }
         />
-        <Route
-          path="/register"
-          element={
-            isAuthenticated && user ? (
-              <Navigate to={getOnboardingRoute(user)} replace />
-            ) : (
-              <LoginPage />
-            )
-          }
-        />
+        <Route path="/register" element={<Navigate to="/login" replace />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
-        <Route path="/demo" element={<LiveDemoPage />} />
+
 
         {/* Onboarding Routes */}
         <Route
@@ -149,7 +136,7 @@ export const AppRouter: React.FC = () => {
           path="/home"
           element={
             <ProtectedRoute>
-              <AppLayout>
+              <AppLayout theme="light">
                 <HomePage />
               </AppLayout>
             </ProtectedRoute>
@@ -212,7 +199,17 @@ export const AppRouter: React.FC = () => {
           element={
             <ProtectedRoute>
               <AppLayout>
-                <AgentCreatePage />
+                <AgentStudioPage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/voices"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <VoicesPage />
               </AppLayout>
             </ProtectedRoute>
           }
@@ -327,6 +324,16 @@ export const AppRouter: React.FC = () => {
             <ProtectedRoute>
               <AppLayout>
                 <AnalyticsPage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/observability"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <ObservabilityPage />
               </AppLayout>
             </ProtectedRoute>
           }

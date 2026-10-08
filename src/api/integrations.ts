@@ -2,48 +2,30 @@ import { apiClient } from './client';
 import { Integration, APIEnvelope } from '../types';
 import { MOCK_INTEGRATIONS } from '../utils/constants';
 
-let localIntegrations = [...MOCK_INTEGRATIONS];
-
 export const getIntegrations = async (): Promise<Integration[]> => {
-  try {
-    const res = await apiClient.get<APIEnvelope<any[]>>('/api/v1/integrations');
-    if (res.data?.success && res.data.data && res.data.data.length > 0) {
-      return res.data.data.map((item: any) => {
-        const matchingMock = MOCK_INTEGRATIONS.find(
-          (m) => m.name.toLowerCase().includes(item.provider?.toLowerCase() || '') || m.id === item.provider
-        );
-        return {
-          id: item.id || item.provider,
-          name: item.name || matchingMock?.name || item.provider,
-          category: matchingMock?.category || 'crm',
-          description: matchingMock?.description || 'Connected third-party service.',
-          iconName: matchingMock?.iconName || 'Globe',
-          connected: item.is_connected ?? false,
-          apiKeySet: !!item.credentials_json && item.credentials_json !== '{}',
-        };
-      });
-    }
-  } catch (err) {
-    console.warn('Integrations endpoint unavailable, falling back to local state', err);
+  const res = await apiClient.get<APIEnvelope<any[]>>('/api/v1/integrations');
+  if (!res.data?.success || !Array.isArray(res.data.data)) {
+    throw new Error('Integration status was not confirmed by the server.');
   }
-  return localIntegrations;
+  const dataList = res.data.data || [];
+  return MOCK_INTEGRATIONS.map((catalogItem) => {
+    const item = dataList.find((entry: any) =>
+      entry.provider === catalogItem.id || entry.id === catalogItem.id ||
+      String(entry.name || '').toLowerCase() === catalogItem.name.toLowerCase()
+    );
+    return {
+      ...catalogItem,
+      connected: item?.is_connected === true,
+      apiKeySet: !!item?.credentials_json && item.credentials_json !== '{}',
+    };
+  });
 };
 
 export const toggleIntegration = async (id: string, connected: boolean): Promise<Integration> => {
-  try {
-    const res = await apiClient.post<APIEnvelope<any>>(`/api/v1/integrations/${id}/toggle`, { connected });
-    if (res.data?.success && res.data.data) {
-      localIntegrations = localIntegrations.map((item) => (item.id === id ? { ...item, connected } : item));
-      const updated = localIntegrations.find((item) => item.id === id);
-      if (updated) return { ...updated, connected };
-    }
-  } catch (err) {
-    console.warn('Toggle integration API failed, updating locally', err);
-  }
-
-  localIntegrations = localIntegrations.map((item) => (item.id === id ? { ...item, connected } : item));
-  const updated = localIntegrations.find((item) => item.id === id);
-  if (!updated) throw new Error('Integration not found');
+  const res = await apiClient.post<APIEnvelope<any>>(`/api/v1/integrations/${id}/toggle`, { connected });
+  if (!res.data?.success) throw new Error('The integration change was not confirmed by the server.');
+  const updated = (await getIntegrations()).find((item) => item.id === id);
+  if (!updated) throw new Error('Integration not found after the update.');
   return updated;
 };
 

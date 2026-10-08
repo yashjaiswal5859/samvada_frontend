@@ -24,7 +24,14 @@ function authRedirectPlugin(): Plugin {
         }
 
         // Public routes that do not require authentication
-        if (url === '/login' || url === '/register' || url.startsWith('/verify')) {
+        if (
+          url === '/' ||
+          url === '/landing' ||
+          url === '/demo' ||
+          url === '/login' ||
+          url === '/register' ||
+          url.startsWith('/verify')
+        ) {
           return next();
         }
 
@@ -62,6 +69,9 @@ export default defineConfig({
     },
   },
   server: {
+    host: '0.0.0.0',
+    allowedHosts: true,
+    cors: true,
     port: 5173,
     proxy: {
       '/api/v1/auth': {

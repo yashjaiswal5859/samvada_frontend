@@ -40,6 +40,7 @@ export const IntegrationsPage: React.FC = () => {
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [webhooks, setWebhooks] = useState<WebhookItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
 
   // Modal / Inputs state
   const [showKeyModal, setShowKeyModal] = useState(false);
@@ -59,6 +60,7 @@ export const IntegrationsPage: React.FC = () => {
 
   const loadAll = async () => {
     setIsLoading(true);
+    setLoadError('');
     try {
       const [intRes, keysRes, whRes] = await Promise.all([
         getIntegrations(),
@@ -70,6 +72,7 @@ export const IntegrationsPage: React.FC = () => {
       setWebhooks(whRes);
     } catch (err) {
       console.error('Failed to load integrations data', err);
+      setLoadError('Integration settings could not be loaded. Check your connection and try again.');
     } finally {
       setIsLoading(false);
     }
@@ -230,6 +233,11 @@ export const IntegrationsPage: React.FC = () => {
               <div className="py-16 text-center text-xs text-zinc-400">
                 <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
                 Loading integrations...
+              </div>
+            ) : loadError ? (
+              <div role="alert" className="p-6 sm:p-8 text-center rounded-2xl bg-rose-50 border border-rose-200 space-y-3">
+                <p className="text-sm leading-6 text-rose-800">{loadError}</p>
+                <button type="button" onClick={loadAll} className="px-3 py-2 rounded-lg bg-rose-900 text-white text-xs font-semibold hover:bg-rose-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2">Retry</button>
               </div>
             ) : filteredIntegrations.length === 0 ? (
               <div className="p-12 text-center rounded-2xl bg-[#0c101b]/95 border border-zinc-800/80 space-y-2">

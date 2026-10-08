@@ -395,7 +395,7 @@ export const KnowledgebasePage: React.FC = () => {
       </div>
 
       {/* 4 Real Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 min-[480px]:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Documents */}
         <div className="p-5 rounded-2xl bg-[#0c101b]/95 border border-zinc-800/80 backdrop-blur-xl shadow-lg flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-blue-950/60 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
@@ -459,7 +459,7 @@ export const KnowledgebasePage: React.FC = () => {
               </span>
             </div>
             <p className="text-xs text-zinc-400 mt-0.5 font-medium">
-              Vector Pipeline <span className="text-zinc-500 text-[10px]">live indexing</span>
+              Knowledge processing
             </p>
           </div>
         </div>

@@ -1,38 +1,5 @@
 import { apiClient, getActiveWorkspaceId } from './client';
 import { ApiKey, TeamMember, BillingUsage, OrganizationWallet, APIEnvelope } from '../types';
-import { MOCK_API_KEYS, MOCK_TEAM, MOCK_BILLING } from '../utils/constants';
-
-let localApiKeys: ApiKey[] = [];
-let localTeam: TeamMember[] = [];
-let localBilling: BillingUsage = {
-  planName: 'Starter Trial',
-  totalCredits: 250,
-  usedCredits: 0,
-  billingCycleEnd: new Date(Date.now() + 30 * 86400000).toISOString(),
-  minutesUsed: 0,
-  minutesLimit: 250,
-  costThisMonthUsd: 0,
-  walletBalanceUsd: 5.0,
-};
-
-let localWallet: OrganizationWallet = {
-  walletId: 'w_default',
-  currency: 'USD',
-  balanceUSD: 5.0000,
-  promotionalCreditUSD: 5.0000,
-  lifetimeSpendUSD: 0.0000,
-  isFrozen: false,
-  recentTransactions: [
-    {
-      id: 'tx_welcome',
-      type: 'signup_promo',
-      amountUSD: 5.0000,
-      balanceAfterUSD: 5.0000,
-      description: 'Welcome trial credit ($5.00 USD)',
-      createdAt: new Date().toISOString(),
-    },
-  ],
-};
 
 const getScopedSettingsUrl = (subpath = ''): string => {
   const wsId = getActiveWorkspaceId();
@@ -45,78 +12,34 @@ const getScopedSettingsUrl = (subpath = ''): string => {
 // --- DEVELOPER API KEYS ---
 
 export const getApiKeys = async (): Promise<ApiKey[]> => {
-  try {
-    const res = await apiClient.get<APIEnvelope<ApiKey[]>>(getScopedSettingsUrl('/api-keys'));
-    if (res.data?.success && res.data.data) {
-      return res.data.data;
-    }
-  } catch (err) {
-    console.warn('API keys endpoint unavailable, using local keys', err);
-  }
-  return localApiKeys;
+  const res = await apiClient.get<APIEnvelope<ApiKey[]>>(getScopedSettingsUrl('/api-keys'));
+  if (!res.data?.success || !Array.isArray(res.data.data)) throw new Error('API key list is unavailable.');
+  return res.data.data;
 };
 
 export const createApiKey = async (name: string): Promise<{ apiKey: ApiKey; secret: string }> => {
-  try {
-    const res = await apiClient.post<APIEnvelope<{ api_key: ApiKey; secret: string }>>(
-      getScopedSettingsUrl('/api-keys'),
-      { name }
-    );
-    if (res.data?.success && res.data.data) {
-      const { api_key, secret } = res.data.data;
-      localApiKeys.unshift(api_key);
-      return { apiKey: api_key, secret };
-    }
-  } catch (err) {
-    console.warn('Create API key endpoint unavailable, creating mock key', err);
-  }
-
-  const secret = `sk_live_${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`;
-  const newKey: ApiKey = {
-    id: `key-${Date.now()}`,
-    name,
-    keyPrefix: `${secret.slice(0, 12)}...`,
-    createdAt: new Date().toISOString().slice(0, 10),
-    lastUsedAt: 'Never',
-  };
-  localApiKeys.unshift(newKey);
-  return { apiKey: newKey, secret };
+  const res = await apiClient.post<APIEnvelope<{ api_key: ApiKey; secret: string }>>(getScopedSettingsUrl('/api-keys'), { name });
+  if (!res.data?.success || !res.data.data?.api_key || !res.data.data.secret) throw new Error('The API key was not created by the server.');
+  return { apiKey: res.data.data.api_key, secret: res.data.data.secret };
 };
 
 export const deleteApiKey = async (id: string): Promise<boolean> => {
-  try {
-    await apiClient.delete(getScopedSettingsUrl(`/api-keys/${id}`));
-  } catch (err) {
-    console.warn('Delete API key failed', err);
-  }
-  localApiKeys = localApiKeys.filter((k) => k.id !== id);
-  return true;
+  const res = await apiClient.delete<APIEnvelope<{ revoked?: boolean }>>(getScopedSettingsUrl(`/api-keys/${id}`));
+  return !!res.data?.success;
 };
 
 // --- WEBHOOKS ---
 
 export const getWebhooks = async (): Promise<any[]> => {
-  try {
-    const res = await apiClient.get<APIEnvelope<any[]>>(getScopedSettingsUrl('/webhooks'));
-    if (res.data?.success && res.data.data) {
-      return res.data.data;
-    }
-  } catch (err) {
-    console.warn('Webhooks endpoint unavailable', err);
-  }
-  return [];
+  const res = await apiClient.get<APIEnvelope<any[]>>(getScopedSettingsUrl('/webhooks'));
+  if (!res.data?.success || !Array.isArray(res.data.data)) throw new Error('Webhook list is unavailable.');
+  return res.data.data;
 };
 
 export const createWebhook = async (url: string): Promise<any> => {
-  try {
-    const res = await apiClient.post<APIEnvelope<any>>(getScopedSettingsUrl('/webhooks'), { url });
-    if (res.data?.success && res.data.data) {
-      return res.data.data;
-    }
-  } catch (err) {
-    console.warn('Create webhook failed', err);
-  }
-  return { id: `wh_${Date.now()}`, url, isActive: true };
+  const res = await apiClient.post<APIEnvelope<any>>(getScopedSettingsUrl('/webhooks'), { url });
+  if (!res.data?.success || !res.data.data) throw new Error('The webhook was not created by the server.');
+  return res.data.data;
 };
 
 export const deleteWebhook = async (id: string): Promise<boolean> => {
@@ -132,98 +55,47 @@ export const deleteWebhook = async (id: string): Promise<boolean> => {
 // --- TEAM MEMBERS ---
 
 export const getTeamMembers = async (): Promise<TeamMember[]> => {
-  try {
-    const res = await apiClient.get<APIEnvelope<TeamMember[]>>(getScopedSettingsUrl('/members'));
-    if (res.data?.success && res.data.data) {
-      return res.data.data;
-    }
-  } catch (err) {
-    console.warn('Team members endpoint unavailable', err);
-  }
-  return localTeam;
+  const res = await apiClient.get<APIEnvelope<TeamMember[]>>(getScopedSettingsUrl('/members'));
+  if (!res.data?.success || !Array.isArray(res.data.data)) throw new Error('Team list is unavailable.');
+  return res.data.data;
 };
 
 export const inviteTeamMember = async (email: string, role: 'admin' | 'developer' | 'viewer'): Promise<TeamMember> => {
-  const newMember: TeamMember = {
-    id: `team-${Date.now()}`,
-    name: email.split('@')[0],
-    email,
-    role,
-    status: 'invited',
-    joinedAt: new Date().toISOString().slice(0, 10),
-  };
-  localTeam.push(newMember);
-  return newMember;
+  const res = await apiClient.post<APIEnvelope<TeamMember>>(getScopedSettingsUrl('/members/invite'), { email, role });
+  if (!res.data?.success || !res.data.data) throw new Error('Member invitation is not available from the server.');
+  return res.data.data;
 };
 
 // --- BILLING & USAGE ---
 
 export const getBillingUsage = async (): Promise<BillingUsage> => {
-  try {
-    const res = await apiClient.get<APIEnvelope<any>>(getScopedSettingsUrl('/billing/usage'));
-    if (res.data?.success && res.data.data) {
-      const d = res.data.data;
-      return {
-        planName: d.plan_name || d.planTier || 'Starter Growth',
-        totalCredits: d.included_minutes || 250,
-        usedCredits: d.used_minutes || 0,
-        billingCycleEnd: d.period_end || new Date(Date.now() + 30 * 86400000).toISOString(),
-        minutesUsed: d.used_minutes || 0,
-        minutesLimit: d.included_minutes || 250,
-        costThisMonthUsd: d.estimated_total_cost_usd || 49.00,
-        walletBalanceUsd: d.wallet_balance_usd || 5.00,
-      };
-    }
-  } catch (err) {
-    console.warn('Billing usage endpoint unavailable', err);
-  }
-  return localBilling;
+  const res = await apiClient.get<APIEnvelope<any>>(getScopedSettingsUrl('/billing/usage'));
+  if (!res.data?.success || !res.data.data) throw new Error('Billing usage is unavailable.');
+  const data = res.data.data;
+  return {
+    planName: data.plan_name ?? data.planTier ?? '—',
+    totalCredits: Number(data.included_minutes ?? 0),
+    usedCredits: Number(data.used_minutes ?? 0),
+    billingCycleEnd: data.period_end ?? '',
+    minutesUsed: Number(data.used_minutes ?? 0),
+    minutesLimit: Number(data.included_minutes ?? 0),
+    costThisMonthUsd: Number(data.estimated_total_cost_usd ?? 0),
+    walletBalanceUsd: Number(data.wallet_balance_usd ?? 0),
+  };
 };
 
 // --- WALLET & $5.00 DEMO CREDIT APIS ---
 
 export const getWalletBalance = async (): Promise<OrganizationWallet> => {
-  try {
-    const res = await apiClient.get<APIEnvelope<OrganizationWallet>>(getScopedSettingsUrl('/billing/wallet'));
-    if (res.data?.success && res.data.data) {
-      return res.data.data;
-    }
-  } catch (err) {
-    console.warn('Billing wallet API unavailable, using trial state', err);
-  }
-  return localWallet;
+  const res = await apiClient.get<APIEnvelope<OrganizationWallet>>(getScopedSettingsUrl('/billing/wallet'));
+  if (!res.data?.success || !res.data.data) throw new Error('Wallet balance is unavailable.');
+  return res.data.data;
 };
 
 export const topupWallet = async (amountUSD: number, paymentMethodId: string): Promise<OrganizationWallet> => {
-  try {
-    const res = await apiClient.post<APIEnvelope<OrganizationWallet>>(getScopedSettingsUrl('/billing/wallet/topup'), {
-      amountUSD,
-      paymentMethodId,
-    });
-    if (res.data?.success && res.data.data) {
-      return res.data.data;
-    }
-  } catch (err) {
-    console.warn('Topup API unavailable, updating local state', err);
-  }
-
-  localWallet = {
-    ...localWallet,
-    balanceUSD: localWallet.balanceUSD + amountUSD,
-    recentTransactions: [
-      {
-        id: `tx_${Date.now()}`,
-        type: 'topup',
-        amountUSD,
-        balanceAfterUSD: localWallet.balanceUSD + amountUSD,
-        description: `Wallet manual top-up ($${amountUSD.toFixed(2)})`,
-        createdAt: new Date().toISOString(),
-      },
-      ...localWallet.recentTransactions,
-    ],
-  };
-
-  return localWallet;
+  const res = await apiClient.post<APIEnvelope<OrganizationWallet>>(getScopedSettingsUrl('/billing/wallet/topup'), { amountUSD, paymentMethodId });
+  if (!res.data?.success || !res.data.data) throw new Error('Wallet top-up was not confirmed by the billing service.');
+  return res.data.data;
 };
 
 // --- SECURITY & 2FA APIS ---
@@ -290,15 +162,9 @@ export const getUserProfile = async (): Promise<UserProfileData | null> => {
 };
 
 export const updateUserProfile = async (data: Partial<UserProfileData>): Promise<UserProfileData | null> => {
-  try {
-    const res = await apiClient.patch<APIEnvelope<UserProfileData>>('/api/v1/user/profile', data);
-    if (res.data?.success && res.data.data) {
-      return res.data.data;
-    }
-  } catch (err) {
-    console.warn('Failed to update user profile', err);
-  }
-  return null;
+  const res = await apiClient.patch<APIEnvelope<UserProfileData>>('/api/v1/user/profile', data);
+  if (!res.data?.success || !res.data.data) throw new Error('Profile changes were not confirmed by the server.');
+  return res.data.data;
 };
 
 export const uploadAvatar = async (file: File): Promise<string | null> => {
@@ -345,15 +211,9 @@ export const getNotificationPreferences = async (): Promise<NotificationPreferen
 };
 
 export const updateNotificationPreferences = async (data: NotificationPreferencesData): Promise<NotificationPreferencesData | null> => {
-  try {
-    const res = await apiClient.put<APIEnvelope<NotificationPreferencesData>>('/api/v1/notifications/preferences', data);
-    if (res.data?.success && res.data.data) {
-      return res.data.data;
-    }
-  } catch (err) {
-    console.warn('Failed to update notification preferences', err);
-  }
-  return null;
+  const res = await apiClient.put<APIEnvelope<NotificationPreferencesData>>('/api/v1/notifications/preferences', data);
+  if (!res.data?.success || !res.data.data) throw new Error('Notification preferences were not saved.');
+  return res.data.data;
 };
 
 export const sendTestNotification = async (channel = 'all'): Promise<boolean> => {
@@ -428,5 +288,3 @@ export const getAuditLogs = async (limit = 50, offset = 0): Promise<{ logs: Audi
   }
   return { logs: [], total: 0 };
 };
-
-

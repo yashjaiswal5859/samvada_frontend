@@ -9,7 +9,19 @@
   --bg-card: #0c1222;
   --bg-sidebar: #060a16;
   --border-color: rgba(59, 130, 246, 0.12);
-  --border-focus: #2563eb;
+  --border-focus: #059669;
+
+  /* Samvada AI Deep Emerald & Forest Slate Design System Tokens */
+  --samvada-emerald-primary: #059669;
+  --samvada-emerald-dark: #047857;
+  --samvada-forest-slate: #064e3b;
+  --samvada-mint-bg: #ecfdf5;
+  --samvada-mint-border: #a7f3d0;
+  --samvada-canvas: #ffffff;
+  --samvada-panel: #f8fafc;
+  --samvada-border: #e2e8f0;
+  --samvada-text-main: #0f172a;
+  --samvada-text-muted: #64748b;
 }
 
 * {
@@ -18,8 +30,8 @@
 
 html, body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #070b16;
-  color: #f1f5f9;
+  background-color: #ffffff;
+  color: #0f172a;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -48,6 +60,23 @@ html, body {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.25);
+}
+
+/* Sleek Light & Daylight Custom Scrollbars */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+  transition: background 0.2s ease;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 /* Interactive Press State Micro-interaction */
@@ -219,4 +248,222 @@ input[type="radio"] {
   outline: 2px solid #ffffff;
   outline-offset: 2px;
 }
+
+/* Sound Waveform Animation */
+@keyframes waveBar {
+  0%, 100% {
+    transform: scaleY(0.2);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.animate-wave-bar {
+  transform-origin: bottom;
+  animation: waveBar 1.2s ease-in-out infinite;
+}
+
+@keyframes spinSlow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spinSlow 50s linear infinite;
+}
+
+/* ==========================================================================
+   PORTAL LIGHT THEME SYSTEM (Formal, Executive, Clean Light Mode)
+   Applies across all portal routes wrapped in AppLayout (.portal-light)
+   ========================================================================== */
+
+.portal-light {
+  color-scheme: light;
+}
+
+/* Formal restrained typography for headings */
+.portal-light h1 {
+  font-size: 1.5rem !important; /* 24px executive standard */
+  line-height: 2rem !important;
+  font-weight: 600 !important;
+  color: #0f172a !important;
+  letter-spacing: -0.02em !important;
+}
+
+.portal-light h2 {
+  font-size: 1.25rem !important; /* 20px */
+  line-height: 1.75rem !important;
+  font-weight: 600 !important;
+  color: #0f172a !important;
+  letter-spacing: -0.015em !important;
+}
+
+.portal-light h3 {
+  font-size: 0.975rem !important; /* 15.6px */
+  line-height: 1.5rem !important;
+  font-weight: 600 !important;
+  color: #0f172a !important;
+}
+
+/* Dark surface containers converted to crisp white cards */
+.portal-light [class*="bg-[#0c101b]"],
+.portal-light [class*="bg-[#080b11]"],
+.portal-light [class*="bg-[#070b16]"],
+.portal-light [class*="bg-[#0c1427]"],
+.portal-light [class*="bg-[#0b1020]"],
+.portal-light [class*="bg-[#0c1222]"],
+.portal-light [class*="bg-[#12131a]"],
+.portal-light [class*="bg-[#181922]"],
+.portal-light [class*="bg-zinc-900"],
+.portal-light [class*="bg-zinc-950"],
+.portal-light .glass-panel {
+  background-color: #ffffff !important;
+  background-image: none !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Dark border classes converted to formal slate borders */
+.portal-light [class*="border-zinc-800"],
+.portal-light [class*="border-zinc-700"],
+.portal-light [class*="border-zinc-850"],
+.portal-light [class*="border-zinc-900"],
+.portal-light [class*="border-slate-800"] {
+  border-color: #e2e8f0 !important;
+}
+
+/* Text color transformations */
+.portal-light .text-white:not(button):not(button *):not(a[class*="bg-"]):not([class*="bg-blue-600"] *):not([class*="bg-slate-900"] *):not([class*="bg-indigo-600"] *) {
+  color: #0f172a !important;
+}
+
+.portal-light .text-zinc-400,
+.portal-light .text-zinc-500 {
+  color: #64748b !important;
+}
+
+.portal-light .text-zinc-300,
+.portal-light .text-zinc-200,
+.portal-light .text-zinc-100 {
+  color: #334155 !important;
+}
+
+/* Form Inputs, Textareas, and Dropdown selects */
+.portal-light input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.portal-light textarea {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03) !important;
+}
+
+.portal-light input::placeholder,
+.portal-light textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Tables in light mode */
+.portal-light thead {
+  background-color: #f8fafc !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+.portal-light thead th {
+  color: #475569 !important;
+  font-weight: 600 !important;
+  font-size: 0.75rem !important;
+}
+
+.portal-light tbody tr {
+  border-bottom: 1px solid #f1f5f9 !important;
+  color: #334155 !important;
+}
+
+.portal-light tbody tr:hover {
+  background-color: #f8fafc !important;
+}
+
+.portal-light tbody td {
+  color: #334155 !important;
+}
+
+.portal-light [class*="divide-zinc-800"] > :not([hidden]) ~ :not([hidden]) {
+  border-color: #f1f5f9 !important;
+}
+
+/* Inactive tabs and hover states */
+.portal-light button.text-zinc-400:hover,
+.portal-light [class*="hover:bg-zinc-8"] :hover,
+.portal-light [class*="hover:bg-zinc-850"] :hover {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+/* Stat card icon containers (replace deep dark badges with soft executive pastels) */
+.portal-light [class*="bg-blue-950"] {
+  background-color: #eff6ff !important;
+  border-color: #bfdbfe !important;
+  color: #1d4ed8 !important;
+}
+
+.portal-light [class*="bg-purple-950"] {
+  background-color: #faf5ff !important;
+  border-color: #e9d5ff !important;
+  color: #7e22ce !important;
+}
+
+.portal-light [class*="bg-cyan-950"] {
+  background-color: #ecfeff !important;
+  border-color: #a5f3fc !important;
+  color: #0e7490 !important;
+}
+
+.portal-light [class*="bg-emerald-950"] {
+  background-color: #f0fdf4 !important;
+  border-color: #bbf7d0 !important;
+  color: #15803d !important;
+}
+
+.portal-light [class*="bg-amber-950"] {
+  background-color: #fffbeb !important;
+  border-color: #fde68a !important;
+  color: #b45309 !important;
+}
+
+/* Status Badges */
+.portal-light [class*="bg-emerald-500/15"],
+.portal-light [class*="bg-emerald-500/10"] {
+  background-color: #f0fdf4 !important;
+  border-color: #bbf7d0 !important;
+  color: #166534 !important;
+}
+
+.portal-light [class*="bg-blue-500/15"],
+.portal-light [class*="bg-blue-500/10"] {
+  background-color: #eff6ff !important;
+  border-color: #bfdbfe !important;
+  color: #1e40af !important;
+}
+
+.portal-light [class*="bg-amber-500/15"],
+.portal-light [class*="bg-amber-500/10"] {
+  background-color: #fffbeb !important;
+  border-color: #fde68a !important;
+  color: #92400e !important;
+}
+
+/* Custom Scrollbars in portal light */
+.portal-light ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15) !important;
+}
+
+.portal-light ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.28) !important;
+}
+
+
 

@@ -41,6 +41,7 @@ interface AuthContextType {
   refreshUser: () => Promise<void>;
   switchWorkspace: (workspaceId: string) => void;
   createWorkspace: (payload: CreateWorkspacePayload) => Promise<Workspace>;
+  devLogin?: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -257,6 +258,35 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const devLogin = () => {
+    if (!(import.meta as any).env?.DEV || (import.meta as any).env?.VITE_ENABLE_DEMO_ACCESS !== 'true') return;
+    const mockOrg: Organization = {
+      id: 'org-111',
+      name: 'Samvada Enterprise Labs',
+      slug: 'samvada-labs',
+      ownerId: '11111111-1111-1111-1111-111111111111',
+    };
+    const mockWs: Workspace = {
+      id: 'ws-111',
+      name: 'Production Voice AI Hub',
+      orgId: 'org-111',
+      slug: 'production-hub',
+    };
+    const mockUser: User = {
+      id: '11111111-1111-1111-1111-111111111111',
+      email: 'testuser@samvada.ai',
+      displayName: 'Alex Rivers',
+      role: 'ADMIN',
+      organization: mockOrg,
+      workspace: mockWs,
+      onboardingCompleted: true,
+      createdAt: new Date().toISOString(),
+    };
+    document.cookie = 'access_token=dev_token_bypass_1234567890; path=/';
+    document.cookie = 'refresh_token=dev_token_bypass_1234567890; path=/';
+    applyTenantContext(mockUser, mockOrg, [mockWs]);
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -275,6 +305,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         refreshUser,
         switchWorkspace,
         createWorkspace,
+        devLogin,
       }}
     >
       {children}

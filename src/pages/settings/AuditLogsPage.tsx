@@ -101,7 +101,7 @@ export const AuditLogsPage: React.FC = () => {
     <div className="space-y-6 pb-12 max-w-7xl mx-auto px-4 sm:px-6">
       <SettingsNav
         title="Audit Logs"
-        subtitle="Immutable tamper-evident record of administrative mutations, configuration updates, and security events."
+        subtitle="Review administrative actions recorded for this workspace."
       />
 
       {/* Audit Log Card */}
@@ -113,7 +113,7 @@ export const AuditLogsPage: React.FC = () => {
               Administrative Audit Log
             </h2>
             <p className="text-xs text-zinc-400 mt-0.5">
-              Immutable tamper-evident record of administrative mutations, configuration updates, and key lifecycle events.
+              Records returned by the audit service for this workspace.
             </p>
           </div>
 

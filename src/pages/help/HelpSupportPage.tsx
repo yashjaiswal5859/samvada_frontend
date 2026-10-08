@@ -140,13 +140,7 @@ export const HelpSupportPage: React.FC = () => {
 
   const handleTicketSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
-    toast.success('Support ticket #SAM-8492 created. An engineer will follow up shortly.');
-    setTimeout(() => {
-      setSubmitted(false);
-      setTicketModalOpen(false);
-      setContactModalOpen(false);
-    }, 2000);
+    toast.error('Support requests are not connected yet. Your message was not sent.');
   };
 
   return (
@@ -315,16 +309,15 @@ export const HelpSupportPage: React.FC = () => {
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-bold text-white">System Status</h2>
-                <span className="inline-flex items-center gap-1.5 text-xs text-emerald-400 font-medium bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                  All Systems Operational
+                <span className="inline-flex items-center gap-1.5 text-xs text-zinc-300 font-medium bg-zinc-800 px-2 py-0.5 rounded-md border border-zinc-700">
+                  Status unavailable
                 </span>
               </div>
               <button className="text-xs font-semibold text-blue-400 hover:text-blue-300">
                 View Status &rarr;
               </button>
             </div>
-            <p className="text-xs text-zinc-400 mt-1 mb-3">All services are running smoothly.</p>
+            <p className="text-xs text-zinc-400 mt-1 mb-3">Live service health is not connected to this page.</p>
 
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="p-2 rounded-xl bg-[#080b11] border border-zinc-800/80 flex items-center gap-2">
@@ -351,7 +344,7 @@ export const HelpSupportPage: React.FC = () => {
             <div>
               <h2 className="text-base font-bold text-white">Still need help?</h2>
               <p className="text-xs text-zinc-400 mt-1">
-                Our support team is here for you. Send us a message and we'll get back within 24 hours.
+                Support requests from this page are not connected yet.
               </p>
             </div>
 
@@ -362,13 +355,6 @@ export const HelpSupportPage: React.FC = () => {
               >
                 <Send className="w-3.5 h-3.5" />
                 <span>Contact Support</span>
-              </button>
-              <button
-                onClick={() => toast.info('Enterprise Concierge: Booking calendar launched on Google Meet')}
-                className="w-full py-2.5 rounded-xl border border-zinc-800 bg-[#080b11] hover:bg-zinc-800 text-zinc-300 text-xs font-semibold flex items-center justify-center gap-2 transition-all active:scale-[0.985]"
-              >
-                <Calendar className="w-3.5 h-3.5 text-zinc-400" />
-                <span>Schedule a Call</span>
               </button>
             </div>
 
@@ -395,7 +381,7 @@ export const HelpSupportPage: React.FC = () => {
                 <ExternalLink className="w-2.5 h-2.5" />
               </a>
               <button
-                onClick={() => toast.info('Feature request portal: Feedback recorded for product engineering')}
+                onClick={() => toast.info('The feature request portal is not connected yet.')}
                 className="hover:text-amber-400 flex items-center gap-1 transition-colors"
               >
                 <Lightbulb className="w-3 h-3" />
@@ -426,7 +412,7 @@ export const HelpSupportPage: React.FC = () => {
               </div>
               <div>
                 <h3 className="text-base font-bold text-white">Contact Samvada AI Support</h3>
-                <p className="text-xs text-zinc-400">We usually respond within 2-4 hours.</p>
+                <p className="text-xs text-zinc-400">This form is not connected to a support service. Do not include sensitive information.</p>
               </div>
             </div>
 
@@ -470,7 +456,8 @@ export const HelpSupportPage: React.FC = () => {
                 </div>
                 <button
                   type="submit"
-                  className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold flex items-center justify-center gap-2 shadow-md shadow-blue-600/25 active:scale-[0.985] transition-all"
+                  disabled
+                  className="w-full py-2.5 rounded-xl bg-zinc-700 text-zinc-400 font-semibold flex items-center justify-center gap-2 cursor-not-allowed"
                 >
                   <Send className="w-3.5 h-3.5" />
                   <span>Submit Ticket</span>

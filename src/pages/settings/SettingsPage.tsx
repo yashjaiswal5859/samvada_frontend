@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { NavLink } from 'react-router-dom';
 import {
   Building2,
   Globe,
@@ -17,496 +16,1081 @@ import {
   HelpCircle,
   MessageSquare,
   Lightbulb,
-  ExternalLink
+  ExternalLink,
+  Shield,
+  Key,
+  Layers,
+  Radio,
+  Sliders,
+  Zap,
+  CheckCircle2,
+  Copy,
+  Eye,
+  EyeOff,
+  Plus,
+  RefreshCw,
+  Server,
+  DollarSign,
+  Lock,
+  X
 } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { CustomSelect } from '../../components/ui/CustomSelect';
+import { useWorkspace } from '../../contexts/WorkspaceContext';
 import { SettingsNav } from '../../components/layout/SettingsNav';
+
+interface ApiKeyItem {
+  id: string;
+  name: string;
+  prefix: string;
+  keyMasked: string;
+  scope: string;
+  environment: 'Production' | 'Sandbox';
+  created: string;
+  lastUsed: string;
+}
+
+interface TeamMember {
+  id: string;
+  name: string;
+  email: string;
+  role: 'Owner' | 'Admin' | 'Voice Architect' | 'Analyst';
+  avatar: string;
+  status: 'Active' | 'Invited';
+  twoFactor: boolean;
+  lastActive: string;
+}
 
 export const SettingsPage: React.FC = () => {
   const { user } = useAuth();
-  const [orgName, setOrgName] = useState(user?.companyName || user?.organization?.name || 'Default Workspace');
-  const [website, setWebsite] = useState('');
-  const [industry, setIndustry] = useState('Technology');
-  const [timezone, setTimezone] = useState('Asia/Kolkata (IST)');
-  const [language, setLanguage] = useState('English');
-  const [landingPage, setLandingPage] = useState('Dashboard');
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [darkModeEnabled, setDarkModeEnabled] = useState(true);
-  const [dateFormat, setDateFormat] = useState('Sep 14, 2026 (MMM DD, YYYY)');
-  const [timeFormat, setTimeFormat] = useState('12-hour (AM/PM)');
-
+  const { organizationName } = useWorkspace();
   const toast = useToast();
 
-  React.useEffect(() => {
-    if (user?.companyName || user?.organization?.name) {
-      setOrgName(user.companyName || user.organization?.name || '');
+  const [activeTab, setActiveTab] = useState<'general' | 'concurrency' | 'apikeys' | 'team' | 'billing' | 'security'>('general');
+
+  // General Settings state
+  const [orgName, setOrgName] = useState(user?.companyName || user?.organization?.name || organizationName || 'Samvada Enterprise Labs');
+  const [website, setWebsite] = useState('https://samvada.ai');
+  const [industry, setIndustry] = useState('Enterprise AI & Telephony');
+  const [timezone, setTimezone] = useState('America/New_York (EST)');
+  const [dataResidency, setDataResidency] = useState('US-East (N. Virginia)');
+  const [audioCodec, setAudioCodec] = useState('8kHz Telephony (G.711 / μ-law)');
+  const [piiRedaction, setPiiRedaction] = useState(true);
+  const [noiseSuppression, setNoiseSuppression] = useState(true);
+
+  // Concurrency state
+  const [concurrencyQuota, setConcurrencyQuota] = useState(50);
+  const [showQuotaModal, setShowQuotaModal] = useState(false);
+  const [requestedChannels, setRequestedChannels] = useState('100');
+
+  // API Keys state
+  const [showKeyModal, setShowKeyModal] = useState(false);
+  const [newKeyName, setNewKeyName] = useState('');
+  const [newKeyScope, setNewKeyScope] = useState('Full Telephony Admin');
+  const [newKeyEnv, setNewKeyEnv] = useState<'Production' | 'Sandbox'>('Production');
+  const [revealedKeys, setRevealedKeys] = useState<Record<string, boolean>>({});
+
+  const [apiKeys, setApiKeys] = useState<ApiKeyItem[]>([
+    {
+      id: 'key-1',
+      name: 'Primary SIP Gateway Dispatcher',
+      prefix: 'samvada_live_',
+      keyMasked: 'samvada_live_948f••••••••2819',
+      scope: 'Full Telephony Admin',
+      environment: 'Production',
+      created: 'Oct 1, 2026',
+      lastUsed: 'Just now',
+    },
+    {
+      id: 'key-2',
+      name: 'Outbound Campaign Dialer Worker',
+      prefix: 'samvada_live_',
+      keyMasked: 'samvada_live_38ca••••••••7110',
+      scope: 'Campaign Dispatch & Telephony',
+      environment: 'Production',
+      created: 'Sep 28, 2026',
+      lastUsed: '14 mins ago',
+    },
+    {
+      id: 'key-3',
+      name: 'Local Dev Voice Simulator',
+      prefix: 'samvada_test_',
+      keyMasked: 'samvada_test_01ef••••••••6291',
+      scope: 'Sandbox Simulator Access',
+      environment: 'Sandbox',
+      created: 'Sep 10, 2026',
+      lastUsed: '2 hours ago',
+    },
+  ]);
+
+  // Team state
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState<'Admin' | 'Voice Architect' | 'Analyst'>('Voice Architect');
+
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([
+    {
+      id: 'team-1',
+      name: user?.displayName || 'Alex Rivers',
+      email: user?.email || 'alex.rivers@samvada.ai',
+      role: 'Owner',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&h=150&q=80',
+      status: 'Active',
+      twoFactor: true,
+      lastActive: 'Online now',
+    },
+    {
+      id: 'team-2',
+      name: 'Priya Nair',
+      email: 'priya.nair@samvada.ai',
+      role: 'Admin',
+      avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=150&h=150&q=80',
+      status: 'Active',
+      twoFactor: true,
+      lastActive: '28 mins ago',
+    },
+    {
+      id: 'team-3',
+      name: 'Marcus Sterling',
+      email: 'marcus.s@samvada.ai',
+      role: 'Voice Architect',
+      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=150&q=80',
+      status: 'Active',
+      twoFactor: true,
+      lastActive: '3 hours ago',
+    },
+    {
+      id: 'team-4',
+      name: 'David Vance',
+      email: 'david.v@samvada.ai',
+      role: 'Analyst',
+      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&h=150&q=80',
+      status: 'Active',
+      twoFactor: false,
+      lastActive: 'Yesterday',
+    },
+  ]);
+
+  const handleCopyKey = (key: ApiKeyItem) => {
+    navigator.clipboard.writeText(`${key.prefix}sec_a89172839b9101f2`);
+    toast.success('API Key Copied', `${key.name} token copied to clipboard.`);
+  };
+
+  const toggleKeyVisibility = (keyId: string) => {
+    setRevealedKeys(prev => ({ ...prev, [keyId]: !prev[keyId] }));
+  };
+
+  const handleCreateKey = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newKeyName.trim()) {
+      toast.error('Please enter a key name.');
+      return;
     }
-  }, [user]);
-
-  const handleSave = () => {
-    toast.success('Settings Saved', 'Organization profile & workspace preferences updated.');
+    const newKey: ApiKeyItem = {
+      id: `key-${Date.now()}`,
+      name: newKeyName,
+      prefix: newKeyEnv === 'Production' ? 'samvada_live_' : 'samvada_test_',
+      keyMasked: `${newKeyEnv === 'Production' ? 'samvada_live_' : 'samvada_test_'}83f1••••••••${Math.floor(1000 + Math.random() * 9000)}`,
+      scope: newKeyScope,
+      environment: newKeyEnv,
+      created: 'Just now',
+      lastUsed: 'Never',
+    };
+    setApiKeys([newKey, ...apiKeys]);
+    setShowKeyModal(false);
+    setNewKeyName('');
+    toast.success('API Key Generated', `Secret token for "${newKeyName}" is ready.`);
   };
 
-  const handleExportData = () => {
-    toast.info('Export Started', 'Archiving all call records, transcripts, and audio files (ZIP)...');
+  const handleInviteTeam = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteEmail.trim()) {
+      toast.error('Please enter a valid email.');
+      return;
+    }
+    const newMember: TeamMember = {
+      id: `team-${Date.now()}`,
+      name: inviteEmail.split('@')[0],
+      email: inviteEmail,
+      role: inviteRole,
+      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80',
+      status: 'Invited',
+      twoFactor: false,
+      lastActive: 'Pending verification',
+    };
+    setTeamMembers([...teamMembers, newMember]);
+    setShowInviteModal(false);
+    setInviteEmail('');
+    toast.success('Invitation Dispatched', `Invite sent to ${inviteEmail} as ${inviteRole}.`);
   };
 
-  const handleDeactivate = () => {
-    toast.warning('Account Deactivation', 'Contact workspace owner to schedule account deactivation.');
+  const handleRequestQuota = (e: React.FormEvent) => {
+    e.preventDefault();
+    setShowQuotaModal(false);
+    toast.success('Quota Request Submitted', `Requested capacity expansion to ${requestedChannels} concurrent SIP channels. Engineering review SLA is < 2 hours.`);
+  };
+
+  const handleSaveGeneral = () => {
+    toast.success('Settings Saved', 'Organization profile & telephony preferences updated.');
   };
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-16 animate-fade-in">
       <SettingsNav
-        title="Workspace Settings"
-        subtitle="Manage your organization profile, language, regional settings, and platform preferences."
+        title="Platform & Workspace Governance"
+        subtitle="Manage telephony concurrency quotas, developer API keys, role permissions, compliance, and billing."
       />
 
-      {/* Main Grid: Left Settings Form, Right Overview & Danger Zone */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column (8 Cols) */}
-        <div className="lg:col-span-8 space-y-6">
-          {/* Organization Settings Card */}
-          <div className="bg-[#0c101b] border border-zinc-800/80 rounded-2xl p-6 shadow-lg">
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <h2 className="text-base font-bold text-white">Organization Settings</h2>
-                <p className="text-xs text-zinc-400 mt-0.5">Basic information about your organization.</p>
-              </div>
-              <button
-                onClick={handleSave}
-                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-all shadow-md shadow-blue-600/25"
-              >
-                <span>Save Changes</span>
-              </button>
-            </div>
+      {/* ── Subtabs Internal Mode Switcher ── */}
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto text-xs font-semibold">
+        {[
+          { id: 'general', label: 'Organization & Voice Specs', icon: Building2 },
+          { id: 'concurrency', label: 'Telephony & Concurrency Quotas', icon: Phone },
+          { id: 'apikeys', label: 'API Keys & Secrets', icon: Key },
+          { id: 'team', label: 'Team & Access Control', icon: Users },
+          { id: 'billing', label: 'Billing & Plan Limits', icon: DollarSign },
+          { id: 'security', label: 'Security & Compliance', icon: Shield },
+        ].map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${
+                isActive
+                  ? 'border-l-3 border-emerald-600 bg-emerald-50 text-emerald-950 font-bold shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              }`}
+            >
+              <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-emerald-700' : 'text-slate-400'}`} />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
+      </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Left Form Fields */}
-              <div className="space-y-4">
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* TAB 1: GENERAL & ORGANIZATION SETTINGS */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {activeTab === 'general' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-8 space-y-6">
+            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-2xs">
+              <div className="flex items-center justify-between mb-5 border-b border-slate-100 pb-3">
                 <div>
-                  <label className="block text-xs font-semibold text-zinc-300 mb-1.5">Organization Name</label>
+                  <h2 className="text-base font-bold text-slate-900">Organization Voice Profile</h2>
+                  <p className="text-xs text-slate-500 mt-0.5">Global defaults applied across all voice agents and outbound campaigns.</p>
+                </div>
+                <button
+                  onClick={handleSaveGeneral}
+                  className="px-4 py-2 rounded-lg bg-emerald-950 hover:bg-emerald-900 text-white text-xs font-semibold shadow-xs transition-all active:scale-95"
+                >
+                  Save Changes
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Organization Legal Name</label>
                   <input
                     type="text"
                     value={orgName}
                     onChange={(e) => setOrgName(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-[#080b11] border border-zinc-800 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500 transition-colors shadow-inner"
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-zinc-300 mb-1.5">Website</label>
+                  <label className="block font-bold text-slate-700 mb-1">Public Domain</label>
                   <input
-                    type="url"
+                    type="text"
                     value={website}
                     onChange={(e) => setWebsite(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-[#080b11] border border-zinc-800 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500 transition-colors shadow-inner"
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-zinc-300 mb-1.5">Industry</label>
-                  <CustomSelect
+                  <label className="block font-bold text-slate-700 mb-1">Primary Industry & Vertical</label>
+                  <select
                     value={industry}
-                    onChange={setIndustry}
-                    size="md"
-                    options={[
-                      { value: 'Technology', label: 'Technology' },
-                      { value: 'Finance & Banking', label: 'Finance & Banking' },
-                      { value: 'Healthcare', label: 'Healthcare' },
-                      { value: 'Real Estate', label: 'Real Estate' },
-                      { value: 'E-Commerce', label: 'E-Commerce' },
-                      { value: 'Telecommunications', label: 'Telecommunications' }
-                    ]}
-                  />
+                    onChange={(e) => setIndustry(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  >
+                    <option value="Enterprise AI & Telephony">Enterprise AI & Telephony</option>
+                    <option value="Healthcare & Clinical Triage">Healthcare & Clinical Triage</option>
+                    <option value="Hospitality & Travel Concierge">Hospitality & Travel Concierge</option>
+                    <option value="Fintech & Banking">Fintech & Banking</option>
+                    <option value="Insurance & Claims Processing">Insurance & Claims Processing</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Default Telephony Timezone</label>
+                  <select
+                    value={timezone}
+                    onChange={(e) => setTimezone(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  >
+                    <option value="America/New_York (EST)">America/New_York (EST)</option>
+                    <option value="America/Los_Angeles (PST)">America/Los_Angeles (PST)</option>
+                    <option value="Europe/London (GMT)">Europe/London (GMT)</option>
+                    <option value="Asia/Kolkata (IST)">Asia/Kolkata (IST)</option>
+                    <option value="Asia/Tokyo (JST)">Asia/Tokyo (JST)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Data Residency & Sovereign Region</label>
+                  <select
+                    value={dataResidency}
+                    onChange={(e) => setDataResidency(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  >
+                    <option value="US-East (N. Virginia)">US-East (N. Virginia, HIPAA/SOC-2)</option>
+                    <option value="EU-Central (Frankfurt)">EU-Central (Frankfurt, GDPR Compliant)</option>
+                    <option value="IN-West (Mumbai)">IN-West (Mumbai, Data Localization)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Telephony Stream Audio Codec</label>
+                  <select
+                    value={audioCodec}
+                    onChange={(e) => setAudioCodec(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  >
+                    <option value="8kHz Telephony (G.711 / μ-law)">8kHz Telephony (G.711 / μ-law) - PSTN Native</option>
+                    <option value="16kHz Wideband (G.722)">16kHz Wideband (G.722) - HD Voice</option>
+                    <option value="24kHz Full-Band (Opus WebRTC)">24kHz Full-Band (Opus) - WebRTC Ultra-HD</option>
+                  </select>
                 </div>
               </div>
 
-              {/* Right Form Fields */}
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-zinc-300 mb-1.5">Organization Logo</label>
+              {/* Toggles */}
+              <div className="mt-6 pt-5 border-t border-slate-100 space-y-4">
+                <div className="flex items-center justify-between p-3.5 rounded-lg border border-slate-200 bg-slate-50/50">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-blue-600/30 border border-blue-500/40 text-blue-400 font-bold text-lg flex items-center justify-center shrink-0 shadow-md">
-                      A
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => toast.info('Logo Upload', 'Select a PNG/JPG file up to 2MB')}
-                        className="px-3 py-1.5 rounded-xl border border-zinc-800 bg-[#080b11] hover:bg-zinc-800 text-zinc-200 text-xs font-medium transition-colors"
-                      >
-                        Change Logo
-                      </button>
-                      <button
-                        onClick={() => toast.warning('Logo Removed', 'Reset to default organization avatar')}
-                        className="p-2 rounded-xl border border-zinc-800 bg-[#080b11] hover:bg-zinc-800 text-zinc-400 hover:text-rose-400 transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                    <Shield className="w-5 h-5 text-emerald-700" />
+                    <div>
+                      <span className="font-bold text-slate-900 text-xs block">Automatic PII / PCI Audio Redaction</span>
+                      <span className="text-[11px] text-slate-500">
+                        Automatically bleeps and masks credit cards, SSNs, and medical records before saving recordings.
+                      </span>
                     </div>
                   </div>
-                  <p className="text-[10px] text-zinc-500 mt-2">
-                    Recommended: 512 x 512, PNG or JPG Max size: 2 MB
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-zinc-300 mb-1.5">Timezone</label>
-                  <CustomSelect
-                    value={timezone}
-                    onChange={setTimezone}
-                    size="md"
-                    options={[
-                      { value: 'Asia/Kolkata (IST)', label: 'Asia/Kolkata (IST)' },
-                      { value: 'America/New_York (EST)', label: 'America/New_York (EST)' },
-                      { value: 'America/Los_Angeles (PST)', label: 'America/Los_Angeles (PST)' },
-                      { value: 'Europe/London (GMT)', label: 'Europe/London (GMT)' }
-                    ]}
+                  <input
+                    type="checkbox"
+                    checked={piiRedaction}
+                    onChange={(e) => setPiiRedaction(e.target.checked)}
+                    className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-zinc-300 mb-1.5">Language</label>
-                  <CustomSelect
-                    value={language}
-                    onChange={setLanguage}
-                    size="md"
-                    options={[
-                      { value: 'English', label: 'English' },
-                      { value: 'Hindi', label: 'Hindi (हिंदी)' },
-                      { value: 'Spanish', label: 'Spanish (Español)' },
-                      { value: 'German', label: 'German (Deutsch)' }
-                    ]}
+                <div className="flex items-center justify-between p-3.5 rounded-lg border border-slate-200 bg-slate-50/50">
+                  <div className="flex items-center gap-3">
+                    <Radio className="w-5 h-5 text-emerald-700" />
+                    <div>
+                      <span className="font-bold text-slate-900 text-xs block">Dynamic Acoustic Background Noise Suppression</span>
+                      <span className="text-[11px] text-slate-500">
+                        Filters wind, car acoustics, and street noise before sending audio into the speech-to-text pipeline.
+                      </span>
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={noiseSuppression}
+                    onChange={(e) => setNoiseSuppression(e.target.checked)}
+                    className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
                   />
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Preferences Card */}
-          <div className="bg-[#0c101b] border border-zinc-800/80 rounded-2xl p-6 shadow-lg">
-            <h2 className="text-base font-bold text-white">Preferences</h2>
-            <p className="text-xs text-zinc-400 mt-0.5 mb-5">Customize your experience.</p>
-
-            <div className="space-y-4 divide-y divide-zinc-800/60 text-xs">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3">
-                <div>
-                  <div className="font-semibold text-zinc-200">Default Landing Page</div>
-                  <div className="text-[11px] text-zinc-400 mt-0.5">Choose the page you see after login.</div>
+          {/* Right Summary Column */}
+          <div className="lg:col-span-4 space-y-5">
+            <div className="p-5 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-4">
+              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Voice Architecture Status</h3>
+              <div className="space-y-3 text-xs">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                  <span className="text-slate-500">Live Voice Cluster</span>
+                  <span className="font-bold text-emerald-700 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    Operational (99.98%)
+                  </span>
                 </div>
-                <div className="w-48">
-                  <CustomSelect
-                    value={landingPage}
-                    onChange={setLandingPage}
-                    options={[
-                      { value: 'Dashboard', label: 'Dashboard' },
-                      { value: 'Agents', label: 'Agents' },
-                      { value: 'Campaigns', label: 'Campaigns' },
-                      { value: 'Live Calls', label: 'Live Calls' }
-                    ]}
-                  />
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                  <span className="text-slate-500">E2E Turn Latency SLA</span>
+                  <span className="font-bold font-mono text-slate-900">&lt; 400ms Guaranteed</span>
                 </div>
-              </div>
-
-              <div className="flex items-center justify-between pt-4">
-                <div>
-                  <div className="font-semibold text-zinc-200">Enable Sound Notifications</div>
-                  <div className="text-[11px] text-zinc-400 mt-0.5">
-                    Play a sound for incoming calls and important events.
-                  </div>
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                  <span className="text-slate-500">Active SIP Trunks</span>
+                  <span className="font-bold text-slate-900">Twilio / Telnyx</span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSoundEnabled(!soundEnabled);
-                    toast.info('Audio Alert', soundEnabled ? 'Sound notifications muted.' : 'Sound notifications enabled.');
-                  }}
-                  className={`w-11 h-6 rounded-full transition-colors relative flex items-center p-1 ${
-                    soundEnabled ? 'bg-blue-600' : 'bg-zinc-800'
-                  }`}
-                >
-                  <div
-                    className={`w-4 h-4 rounded-full bg-white transition-transform ${
-                      soundEnabled ? 'translate-x-5' : 'translate-x-0'
-                    }`}
-                  />
-                </button>
-              </div>
-
-              <div className="flex items-center justify-between pt-4">
-                <div>
-                  <div className="font-semibold text-zinc-200">Enable Dark Mode</div>
-                  <div className="text-[11px] text-zinc-400 mt-0.5">
-                    Use dark theme across the application.
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setDarkModeEnabled(!darkModeEnabled)}
-                  className={`w-11 h-6 rounded-full transition-colors relative flex items-center p-1 ${
-                    darkModeEnabled ? 'bg-blue-600' : 'bg-zinc-800'
-                  }`}
-                >
-                  <div
-                    className={`w-4 h-4 rounded-full bg-white transition-transform ${
-                      darkModeEnabled ? 'translate-x-5' : 'translate-x-0'
-                    }`}
-                  />
-                </button>
-              </div>
-
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-4">
-                <div>
-                  <div className="font-semibold text-zinc-200">Date Format</div>
-                  <div className="text-[11px] text-zinc-400 mt-0.5">Choose your preferred date format.</div>
-                </div>
-                <div className="w-56">
-                  <CustomSelect
-                    value={dateFormat}
-                    onChange={setDateFormat}
-                    options={[
-                      { value: 'Sep 14, 2026 (MMM DD, YYYY)', label: 'Sep 14, 2026 (MMM DD, YYYY)' },
-                      { value: '14/09/2026 (DD/MM/YYYY)', label: '14/09/2026 (DD/MM/YYYY)' },
-                      { value: '2026-09-14 (YYYY-MM-DD)', label: '2026-09-14 (YYYY-MM-DD)' }
-                    ]}
-                  />
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Compliance Accreditations</span>
+                  <span className="font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    SOC-2 • HIPAA • PCI
+                  </span>
                 </div>
               </div>
+            </div>
 
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-4">
-                <div>
-                  <div className="font-semibold text-zinc-200">Time Format</div>
-                  <div className="text-[11px] text-zinc-400 mt-0.5">Choose your preferred time format.</div>
+            {/* Danger Zone */}
+            <div className="p-5 rounded-xl bg-rose-50/50 border border-rose-200 shadow-2xs space-y-3">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-600" />
+                <h3 className="text-xs font-bold text-rose-900 uppercase tracking-wider">Data Governance & Export</h3>
+              </div>
+              <p className="text-xs text-rose-700">
+                Download your complete conversational vault including call transcripts, audio recordings, and evaluation metrics.
+              </p>
+              <button
+                onClick={() => toast.info('Export Started', 'Packaging voice vault as encrypted ZIP (AES-256)...')}
+                className="w-full py-2 bg-white hover:bg-rose-50 border border-rose-300 text-rose-700 rounded-lg text-xs font-bold shadow-2xs transition-all"
+              >
+                Export Complete Voice Vault (.zip)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* TAB 2: CONCURRENCY & TELEPHONY LIMITS */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {activeTab === 'concurrency' && (
+        <div className="space-y-6">
+          {/* Main Concurrency Meter Card */}
+          <div className="p-6 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-bold text-slate-900">Telephony Concurrency & Trunk Capacity</h2>
+                  <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                    SLA Tier: Enterprise
+                  </span>
                 </div>
-                <div className="w-48">
-                  <CustomSelect
-                    value={timeFormat}
-                    onChange={setTimeFormat}
-                    options={[
-                      { value: '12-hour (AM/PM)', label: '12-hour (AM/PM)' },
-                      { value: '24-hour', label: '24-hour' }
-                    ]}
-                  />
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Real-time concurrent SIP trunk channel allocation across inbound IVR routes and outbound dialing campaigns.
+                </p>
+              </div>
+
+              <button
+                onClick={() => setShowQuotaModal(true)}
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-950 hover:bg-emerald-900 text-white rounded-lg text-xs font-semibold shadow-xs transition-all active:scale-95 self-start sm:self-auto"
+              >
+                <Plus className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Request Concurrency Increase</span>
+              </button>
+            </div>
+
+            {/* Visual Concurrency Allocation Bar */}
+            <div className="space-y-3">
+              <div className="flex items-baseline justify-between">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-bold font-mono text-slate-900 tabular-nums">14</span>
+                  <span className="text-lg font-bold text-slate-400 font-mono">/ 50</span>
+                  <span className="text-xs font-semibold text-slate-500">Concurrent Channels Active (28% Utilization)</span>
                 </div>
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                  36 Standby Channels Available
+                </span>
+              </div>
+
+              {/* Segmented Bar */}
+              <div className="w-full h-4 rounded-full bg-slate-100 overflow-hidden flex p-0.5 border border-slate-200">
+                {/* Inbound (6 channels = 12%) */}
+                <div
+                  className="h-full bg-emerald-600 rounded-l-full transition-all"
+                  style={{ width: '12%' }}
+                  title="Inbound IVR: 6 channels (12%)"
+                />
+                {/* Outbound (8 channels = 16%) */}
+                <div
+                  className="h-full bg-teal-600 transition-all"
+                  style={{ width: '16%' }}
+                  title="Outbound Campaigns: 8 channels (16%)"
+                />
+                {/* Available Buffer (72%) */}
+                <div className="h-full bg-transparent flex-1" />
+              </div>
+
+              {/* Legend Strip */}
+              <div className="flex flex-wrap items-center gap-6 pt-1 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded bg-emerald-600" />
+                  <span className="text-slate-600 font-medium">Inbound IVR Trunks: <strong className="text-slate-900">6 Active</strong></span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded bg-teal-600" />
+                  <span className="text-slate-600 font-medium">Outbound Dialers: <strong className="text-slate-900">8 Active</strong></span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded bg-slate-200 border border-slate-300" />
+                  <span className="text-slate-600 font-medium">Headroom Buffer: <strong className="text-slate-900">36 Available</strong></span>
+                </div>
+              </div>
+            </div>
+
+            {/* Telephony Performance Guarantees */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-100 text-xs">
+              <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 space-y-1">
+                <span className="font-bold text-slate-700 block">Outbound Calls Per Second (CPS)</span>
+                <span className="text-lg font-bold font-mono text-slate-900">15.0 CPS</span>
+                <span className="text-[11px] text-slate-500 block">Carriers: Twilio Elastic, Telnyx Global</span>
+              </div>
+
+              <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 space-y-1">
+                <span className="font-bold text-slate-700 block">Max Queue Buffer Depth</span>
+                <span className="text-lg font-bold font-mono text-slate-900">500 Callers</span>
+                <span className="text-[11px] text-slate-500 block">Zero drop rate with auto-hold music</span>
+              </div>
+
+              <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 space-y-1">
+                <span className="font-bold text-slate-700 block">Voice SLA Guarantee</span>
+                <span className="text-lg font-bold font-mono text-emerald-800">99.98% Uptime</span>
+                <span className="text-[11px] text-slate-500 block">Multi-region SIP failover enabled</span>
               </div>
             </div>
           </div>
         </div>
+      )}
 
-        {/* Right Column (4 Cols) */}
-        <div className="lg:col-span-4 space-y-6">
-          {/* Account Overview Card */}
-          <div className="bg-[#0c101b] border border-zinc-800/80 rounded-2xl p-5 shadow-lg">
-            <div className="flex items-center justify-between mb-4">
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* TAB 3: API KEYS & DEVELOPER SECRETS */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {activeTab === 'apikeys' && (
+        <div className="space-y-6">
+          <div className="p-6 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
               <div>
-                <h2 className="text-base font-bold text-white">Account Overview</h2>
-                <p className="text-[11px] text-zinc-400 mt-0.5">Your current plan and usage.</p>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-bold text-slate-900">Developer API Keys & Webhook Secrets</h2>
+                  <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                    Encrypted Vault
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Authenticate your backend services, trigger outbound calling campaigns, and receive realtime WebRTC webhooks.
+                </p>
               </div>
-              <NavLink
-                to="/settings/billing"
-                className="px-3 py-1.5 rounded-xl border border-zinc-800 bg-[#080b11] hover:bg-zinc-800 text-zinc-300 text-xs font-semibold transition-colors"
+
+              <button
+                onClick={() => setShowKeyModal(true)}
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-950 hover:bg-emerald-900 text-white rounded-lg text-xs font-semibold shadow-xs transition-all active:scale-95 self-start sm:self-auto"
               >
-                Manage Plan
-              </NavLink>
+                <Plus className="w-3.5 h-3.5 text-emerald-400" />
+                <span>+ Generate New API Key</span>
+              </button>
             </div>
 
-            <div className="mb-4">
-              <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 inline-flex items-center gap-1">
-                <Star className="w-3 h-3 fill-amber-400" />
-                <span>Pro Plan</span>
+            {/* Keys Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 text-[10px] font-semibold text-slate-400 uppercase tracking-wider bg-slate-50/50">
+                    <th className="py-2.5 px-3">Name & Token</th>
+                    <th className="py-2.5 px-3">Environment</th>
+                    <th className="py-2.5 px-3">Permission Scope</th>
+                    <th className="py-2.5 px-3">Created</th>
+                    <th className="py-2.5 px-3">Last Active</th>
+                    <th className="py-2.5 px-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {apiKeys.map((key) => {
+                    const isRevealed = revealedKeys[key.id];
+                    return (
+                      <tr key={key.id} className="hover:bg-slate-50/70 transition-colors">
+                        <td className="py-3 px-3">
+                          <span className="font-bold text-slate-900 block">{key.name}</span>
+                          <span className="font-mono text-[11px] text-slate-500 mt-0.5 inline-block">
+                            {isRevealed ? `${key.prefix}sec_a89172839b9101f2` : key.keyMasked}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            key.environment === 'Production'
+                              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                              : 'bg-amber-50 text-amber-800 border border-amber-200'
+                          }`}>
+                            {key.environment}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3">
+                          <span className="text-slate-700 font-semibold">{key.scope}</span>
+                        </td>
+                        <td className="py-3 px-3 text-slate-500 font-mono text-[11px]">
+                          {key.created}
+                        </td>
+                        <td className="py-3 px-3 text-slate-700 font-mono text-[11px] font-semibold">
+                          {key.lastUsed}
+                        </td>
+                        <td className="py-3 px-3 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => toggleKeyVisibility(key.id)}
+                              className="p-1.5 text-slate-400 hover:text-slate-700 rounded hover:bg-slate-100"
+                              title={isRevealed ? 'Hide Secret' : 'Reveal Secret'}
+                            >
+                              {isRevealed ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                            </button>
+                            <button
+                              onClick={() => handleCopyKey(key)}
+                              className="p-1.5 text-slate-400 hover:text-emerald-700 rounded hover:bg-emerald-50"
+                              title="Copy API Key"
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setApiKeys(apiKeys.filter((k) => k.id !== key.id));
+                                toast.warning('Key Revoked', `API key "${key.name}" has been disabled immediately.`);
+                              }}
+                              className="p-1.5 text-slate-400 hover:text-rose-600 rounded hover:bg-rose-50"
+                              title="Revoke Key"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* TAB 4: TEAM & ACCESS CONTROL */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {activeTab === 'team' && (
+        <div className="space-y-6">
+          <div className="p-6 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-bold text-slate-900">Team Members & Role-Based Access Control</h2>
+                  <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                    4 Members
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Manage organization access, role privileges, and multi-factor authentication requirements.
+                </p>
+              </div>
+
+              <button
+                onClick={() => setShowInviteModal(true)}
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-950 hover:bg-emerald-900 text-white rounded-lg text-xs font-semibold shadow-xs transition-all active:scale-95 self-start sm:self-auto"
+              >
+                <Plus className="w-3.5 h-3.5 text-emerald-400" />
+                <span>+ Invite Team Member</span>
+              </button>
+            </div>
+
+            {/* Team Members Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 text-[10px] font-semibold text-slate-400 uppercase tracking-wider bg-slate-50/50">
+                    <th className="py-2.5 px-3">Team Member</th>
+                    <th className="py-2.5 px-3">Role</th>
+                    <th className="py-2.5 px-3">2FA Security</th>
+                    <th className="py-2.5 px-3">Status</th>
+                    <th className="py-2.5 px-3">Last Active</th>
+                    <th className="py-2.5 px-3 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {teamMembers.map((member) => (
+                    <tr key={member.id} className="hover:bg-slate-50/70 transition-colors">
+                      <td className="py-3 px-3">
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={member.avatar}
+                            alt={member.name}
+                            className="w-8 h-8 rounded-full object-cover border border-slate-200"
+                          />
+                          <div>
+                            <span className="font-bold text-slate-900 block">{member.name}</span>
+                            <span className="text-[11px] text-slate-500 font-mono">{member.email}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3 px-3">
+                        <span className={`px-2.5 py-0.5 rounded text-[11px] font-bold ${
+                          member.role === 'Owner'
+                            ? 'bg-purple-50 text-purple-900 border border-purple-200'
+                            : member.role === 'Admin'
+                            ? 'bg-emerald-50 text-emerald-900 border border-emerald-200'
+                            : 'bg-slate-100 text-slate-800 border border-slate-200'
+                        }`}>
+                          {member.role}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3">
+                        <span className={`inline-flex items-center gap-1 text-[11px] font-semibold ${
+                          member.twoFactor ? 'text-emerald-700' : 'text-amber-600'
+                        }`}>
+                          <Shield className="w-3.5 h-3.5" />
+                          {member.twoFactor ? 'Enforced' : 'Not Configured'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3">
+                        <span className="inline-flex items-center gap-1.5 text-slate-700 font-semibold">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                          {member.status}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 text-slate-500 font-mono text-[11px]">
+                        {member.lastActive}
+                      </td>
+                      <td className="py-3 px-3 text-right">
+                        {member.role !== 'Owner' && (
+                          <button
+                            onClick={() => {
+                              setTeamMembers(teamMembers.filter((m) => m.id !== member.id));
+                              toast.info('Member Removed', `${member.name} removed from organization.`);
+                            }}
+                            className="text-xs text-slate-400 hover:text-rose-600 font-semibold px-2 py-1 rounded hover:bg-rose-50"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* TAB 5: BILLING & SUBSCRIPTIONS */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {activeTab === 'billing' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div className="p-5 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-2">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Current Plan</span>
+              <div className="text-xl font-bold text-slate-900">Samvada Enterprise Voice</div>
+              <p className="text-xs text-slate-500">Dedicated high-availability cluster with 50 parallel trunks.</p>
+              <span className="inline-block mt-1 font-mono text-xs font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                $499 / month • Billed Annually
               </span>
             </div>
 
-            <div className="space-y-3.5">
-              <div>
-                <div className="flex items-center justify-between text-xs mb-1.5">
-                  <div className="flex items-center gap-2 text-zinc-300">
-                    <div className="w-6 h-6 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400">
-                      <Phone className="w-3 h-3" />
-                    </div>
-                    <span className="font-semibold text-white tabular-nums">5,000</span>
-                    <span className="text-zinc-400">/ 50,000</span>
-                  </div>
-                  <span className="text-zinc-400 font-semibold tabular-nums">10%</span>
-                </div>
-                <div className="text-[11px] text-zinc-500 ml-8 mb-1">Calls used</div>
-                <div className="w-full h-1.5 bg-zinc-800/80 rounded-full overflow-hidden">
-                  <div className="h-full bg-blue-500 rounded-full" style={{ width: '10%' }}></div>
-                </div>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between text-xs mb-1.5">
-                  <div className="flex items-center gap-2 text-zinc-300">
-                    <div className="w-6 h-6 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400">
-                      <Users className="w-3 h-3" />
-                    </div>
-                    <span className="font-semibold text-white tabular-nums">3</span>
-                    <span className="text-zinc-400">/ 10</span>
-                  </div>
-                  <span className="text-zinc-400 font-semibold tabular-nums">30%</span>
-                </div>
-                <div className="text-[11px] text-zinc-500 ml-8 mb-1">Agents</div>
-                <div className="w-full h-1.5 bg-zinc-800/80 rounded-full overflow-hidden">
-                  <div className="h-full bg-blue-600 rounded-full" style={{ width: '30%' }}></div>
-                </div>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between text-xs mb-1.5">
-                  <div className="flex items-center gap-2 text-zinc-300">
-                    <div className="w-6 h-6 rounded-lg bg-cyan-500/10 flex items-center justify-center text-cyan-400">
-                      <Database className="w-3 h-3" />
-                    </div>
-                    <span className="font-semibold text-white tabular-nums">1.2 GB</span>
-                    <span className="text-zinc-400">/ 10 GB</span>
-                  </div>
-                  <span className="text-zinc-400 font-semibold tabular-nums">12%</span>
-                </div>
-                <div className="text-[11px] text-zinc-500 ml-8 mb-1">Knowledge Base Storage</div>
-                <div className="w-full h-1.5 bg-zinc-800/80 rounded-full overflow-hidden">
-                  <div className="h-full bg-cyan-500 rounded-full" style={{ width: '12%' }}></div>
-                </div>
-              </div>
+            <div className="p-5 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-2">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Voice Credit Balance</span>
+              <div className="text-2xl font-bold font-mono text-emerald-800">$142.50</div>
+              <p className="text-xs text-slate-500">Auto-recharges $200 when balance falls below $50.</p>
+              <button
+                onClick={() => toast.success('Credit Added', '$100.00 added to Voice Engine credits.')}
+                className="mt-1 px-3 py-1.5 bg-emerald-950 text-white rounded-lg text-xs font-semibold shadow-xs"
+              >
+                + Add $100 Credit
+              </button>
             </div>
-          </div>
 
-          {/* Danger Zone Card */}
-          <div className="bg-[#0c101b] border border-zinc-800/80 rounded-2xl p-5 shadow-lg">
-            <h2 className="text-base font-bold text-rose-400">Danger Zone</h2>
-            <p className="text-[11px] text-zinc-400 mt-0.5 mb-4">These actions are irreversible.</p>
-
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#080b11] border border-zinc-800/80">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-zinc-800/80 flex items-center justify-center text-zinc-400">
-                    <Download className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-semibold text-zinc-200">Export All Data</div>
-                    <div className="text-[10px] text-zinc-500">Download all your organization data.</div>
-                  </div>
-                </div>
-                <button
-                  onClick={handleExportData}
-                  className="px-3 py-1.5 rounded-xl border border-zinc-800 hover:bg-zinc-800 text-zinc-300 text-xs font-medium transition-colors"
-                >
-                  Export
-                </button>
-              </div>
-
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#080b11] border border-zinc-800/80">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-zinc-800/80 flex items-center justify-center text-zinc-400">
-                    <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-semibold text-zinc-200">Deactivate Account</div>
-                    <div className="text-[10px] text-zinc-500">Temporarily disable your account.</div>
-                  </div>
-                </div>
-                <button
-                  onClick={handleDeactivate}
-                  className="px-3 py-1.5 rounded-xl border border-zinc-800 hover:bg-zinc-800 text-zinc-300 text-xs font-medium transition-colors"
-                >
-                  Deactivate
-                </button>
-              </div>
-
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-rose-500/5 border border-rose-500/20">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-rose-500/15 flex items-center justify-center text-rose-400">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-semibold text-rose-300">Delete Account</div>
-                    <div className="text-[10px] text-zinc-500">Permanently delete your account and all data.</div>
-                  </div>
-                </div>
-                <button
-                  onClick={() => toast.error('Protected Action', 'Account deletion requires 2FA confirmation from workspace Owner.')}
-                  className="px-3 py-1.5 rounded-xl bg-rose-600/20 hover:bg-rose-600 border border-rose-500/30 hover:border-transparent text-rose-300 hover:text-white text-xs font-medium transition-colors"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Need Help Card */}
-          <div className="bg-[#0c101b] border border-zinc-800/80 rounded-2xl p-5 shadow-lg">
-            <h2 className="text-base font-bold text-white">Need Help?</h2>
-            <p className="text-[11px] text-zinc-400 mt-0.5 mb-3">Get support or reach out to our team.</p>
-
-            <div className="space-y-2.5">
-              <NavLink
-                to="/help"
-                className="flex items-center justify-between p-2.5 rounded-xl hover:bg-zinc-800/30 transition-colors group"
+            <div className="p-5 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-2">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Payment Method</span>
+              <div className="text-base font-bold text-slate-900">Mastercard •••• 4912</div>
+              <p className="text-xs text-slate-500">Expires 08/2028 • Billed to billing@samvada.ai</p>
+              <button
+                onClick={() => toast.info('Stripe Customer Portal', 'Redirecting to secure Stripe billing portal...')}
+                className="mt-1 px-3 py-1.5 border border-slate-200 hover:bg-slate-50 rounded-lg text-xs font-semibold text-slate-700"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400">
-                    <HelpCircle className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-semibold text-zinc-200 group-hover:text-blue-400 transition-colors">
-                      Help Center
-                    </div>
-                    <div className="text-[10px] text-zinc-500">Browse documentation and guides.</div>
-                  </div>
-                </div>
-                <span className="text-xs text-zinc-500 group-hover:text-zinc-300 flex items-center gap-1">
-                  <span>Open</span>
-                  <ExternalLink className="w-3 h-3" />
-                </span>
-              </NavLink>
-
-              <NavLink
-                to="/help"
-                className="flex items-center justify-between p-2.5 rounded-xl hover:bg-zinc-800/30 transition-colors group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400">
-                    <MessageSquare className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-semibold text-zinc-200 group-hover:text-emerald-400 transition-colors">
-                      Contact Support
-                    </div>
-                    <div className="text-[10px] text-zinc-500">Get help from our team.</div>
-                  </div>
-                </div>
-                <span className="text-xs text-zinc-500 group-hover:text-zinc-300 flex items-center gap-1">
-                  <span>Contact</span>
-                  <ExternalLink className="w-3 h-3" />
-                </span>
-              </NavLink>
-
-              <NavLink
-                to="/help"
-                className="flex items-center justify-between p-2.5 rounded-xl hover:bg-zinc-800/30 transition-colors group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-7 h-7 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-400">
-                    <Lightbulb className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-semibold text-zinc-200 group-hover:text-purple-400 transition-colors">
-                      Feature Requests
-                    </div>
-                    <div className="text-[10px] text-zinc-500">Tell us what you'd like to see.</div>
-                  </div>
-                </div>
-                <span className="text-xs text-zinc-500 group-hover:text-zinc-300 flex items-center gap-1">
-                  <span>Submit</span>
-                  <ExternalLink className="w-3 h-3" />
-                </span>
-              </NavLink>
+                Manage in Stripe
+              </button>
             </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* TAB 6: SECURITY & COMPLIANCE */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {activeTab === 'security' && (
+        <div className="p-6 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-5">
+          <div className="border-b border-slate-100 pb-3">
+            <h2 className="text-base font-bold text-slate-900">Enterprise Security & Compliance Certifications</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Continuous verification of encryption in transit and at rest.</p>
+          </div>
+
+          <div className="grid grid-cols-1 min-[480px]:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+            <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/50 space-y-2">
+              <div className="flex items-center gap-2 text-emerald-800 font-bold">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>SOC-2 Type II Certified</span>
+              </div>
+              <p className="text-slate-600 text-[11px]">Audit report valid through 2027. End-to-end TLS 1.3 encryption on all SIP media streams.</p>
+            </div>
+
+            <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/50 space-y-2">
+              <div className="flex items-center gap-2 text-emerald-800 font-bold">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>HIPAA BAA Available</span>
+              </div>
+              <p className="text-slate-600 text-[11px]">Protected Health Information (PHI) encrypted with customer-managed keys (CMK).</p>
+            </div>
+
+            <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/50 space-y-2">
+              <div className="flex items-center gap-2 text-emerald-800 font-bold">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>PCI-DSS Level 1 Redaction</span>
+              </div>
+              <p className="text-slate-600 text-[11px]">Zero storage of primary account numbers (PAN) or CVV codes during voice transactions.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal: Request Concurrency Increase ── */}
+      {showQuotaModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-2xl p-6 animate-scale-in">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-800">
+                  <Phone className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Request Concurrency Expansion</h3>
+                  <p className="text-xs text-slate-500">Scale dedicated SIP channels for high-volume campaigns.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowQuotaModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleRequestQuota} className="mt-4 space-y-4 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Target Concurrent Channel Capacity</label>
+                <select
+                  value={requestedChannels}
+                  onChange={(e) => setRequestedChannels(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 font-semibold"
+                >
+                  <option value="100">100 Concurrent Channels (~30 CPS)</option>
+                  <option value="250">250 Concurrent Channels (~75 CPS)</option>
+                  <option value="500">500 Concurrent Channels (~150 CPS)</option>
+                  <option value="1000">1,000+ Custom Enterprise Trunk</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Primary Use Case</label>
+                <textarea
+                  rows={3}
+                  placeholder="e.g. Nationwide clinical reminder campaign launching next Monday at 9 AM EST."
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-900"
+                  required
+                />
+              </div>
+
+              <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-950">
+                <span className="font-bold block">Instant Automated Scaling</span>
+                <span className="text-[11px] text-emerald-800">
+                  Capacity is allocated directly across Twilio Elastic SIP & Telnyx without service interruption.
+                </span>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowQuotaModal(false)}
+                  className="px-4 py-2 border border-slate-200 rounded-lg text-slate-700 font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-emerald-950 hover:bg-emerald-900 text-white rounded-lg font-semibold shadow-xs"
+                >
+                  Submit Expansion Request
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal: Generate API Key ── */}
+      {showKeyModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-2xl p-6 animate-scale-in">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-800">
+                  <Key className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Generate New API Key</h3>
+                  <p className="text-xs text-slate-500">Create a scoped secret for voice platform integration.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowKeyModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateKey} className="mt-4 space-y-4 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Key Description / Name</label>
+                <input
+                  type="text"
+                  value={newKeyName}
+                  onChange={(e) => setNewKeyName(e.target.value)}
+                  placeholder="e.g. Production CRM Webhook Dispatcher"
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 font-semibold"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Environment</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNewKeyEnv('Production')}
+                    className={`p-2.5 rounded-lg border font-semibold text-center ${
+                      newKeyEnv === 'Production'
+                        ? 'border-emerald-600 bg-emerald-50 text-emerald-950 font-bold'
+                        : 'border-slate-200 text-slate-600'
+                    }`}
+                  >
+                    Production (Live SIP)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewKeyEnv('Sandbox')}
+                    className={`p-2.5 rounded-lg border font-semibold text-center ${
+                      newKeyEnv === 'Sandbox'
+                        ? 'border-emerald-600 bg-emerald-50 text-emerald-950 font-bold'
+                        : 'border-slate-200 text-slate-600'
+                    }`}
+                  >
+                    Sandbox (Simulated)
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Permission Scope</label>
+                <select
+                  value={newKeyScope}
+                  onChange={(e) => setNewKeyScope(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 font-semibold"
+                >
+                  <option value="Full Telephony Admin">Full Telephony Admin (Dial, Read, Config)</option>
+                  <option value="Campaign Dispatch & Telephony">Campaign Dispatch & Outbound Only</option>
+                  <option value="Read-only Telemetry & Metrics">Read-only Telemetry & Audio Stream</option>
+                </select>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowKeyModal(false)}
+                  className="px-4 py-2 border border-slate-200 rounded-lg text-slate-700 font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-emerald-950 hover:bg-emerald-900 text-white rounded-lg font-semibold shadow-xs"
+                >
+                  Create Secret Key
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal: Invite Team Member ── */}
+      {showInviteModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-2xl p-6 animate-scale-in">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-800">
+                  <Users className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Invite Team Member</h3>
+                  <p className="text-xs text-slate-500">Add an engineer or analyst to your workspace.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowInviteModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleInviteTeam} className="mt-4 space-y-4 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Corporate Email Address</label>
+                <input
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  placeholder="colleague@yourcompany.com"
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 font-semibold"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Role Privileges</label>
+                <select
+                  value={inviteRole}
+                  onChange={(e) => setInviteRole(e.target.value as any)}
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 font-semibold"
+                >
+                  <option value="Admin">Workspace Admin (Full Agent & Telephony)</option>
+                  <option value="Voice Architect">Voice Architect (Prompt Studio & DAG Canvas)</option>
+                  <option value="Analyst">Analyst (BI Reports & Observability Only)</option>
+                </select>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowInviteModal(false)}
+                  className="px-4 py-2 border border-slate-200 rounded-lg text-slate-700 font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-emerald-950 hover:bg-emerald-900 text-white rounded-lg font-semibold shadow-xs"
+                >
+                  Send Invitation
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

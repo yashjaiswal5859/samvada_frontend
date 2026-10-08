@@ -8,7 +8,8 @@ import {
   Shield,
   FileText,
   Bell,
-  Key
+  Key,
+  Layers
 } from 'lucide-react';
 
 interface SettingsNavProps {
@@ -17,15 +18,15 @@ interface SettingsNavProps {
 }
 
 export const SettingsNav: React.FC<SettingsNavProps> = ({
-  title = 'Settings',
-  subtitle = 'Manage your workspace, profile, team permissions, billing, security, and developer integrations.'
+  title = 'Platform & Workspace Settings',
+  subtitle = 'Manage organization profile, telephony concurrency quotas, team permissions, security, and billing.'
 }) => {
   const tabs = [
     { label: 'General', path: '/settings', icon: Building2 },
-    { label: 'Profile', path: '/settings/profile', icon: User },
+    { label: 'Workspaces', path: '/workspaces', icon: Layers },
     { label: 'Team Members', path: '/settings/team', icon: Users2 },
-    { label: 'Billing & Usage', path: '/settings/billing', icon: CreditCard },
-    { label: 'Security', path: '/settings/security', icon: Shield },
+    { label: 'Billing & Quotas', path: '/settings/billing', icon: CreditCard },
+    { label: 'Security & BAA', path: '/settings/security', icon: Shield },
     { label: 'Audit Logs', path: '/settings/audit-logs', icon: FileText },
     { label: 'Notifications', path: '/notifications', icon: Bell },
     { label: 'Integrations & Keys', path: '/integrations', icon: Key },
@@ -35,12 +36,12 @@ export const SettingsNav: React.FC<SettingsNavProps> = ({
     <div className="space-y-4">
       {/* Header */}
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">{title}</h1>
-        <p className="text-xs sm:text-sm text-zinc-400 mt-1">{subtitle}</p>
+        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">{title}</h1>
+        <p className="text-xs text-slate-500 mt-1">{subtitle}</p>
       </div>
 
       {/* Unified Settings Navigation Bar */}
-      <div className="flex items-center gap-2 overflow-x-auto border-b border-zinc-800 pb-2 text-xs font-medium no-scrollbar">
+      <div className="flex items-center gap-2 overflow-x-auto border-b border-slate-200 pb-2 text-xs font-medium no-scrollbar">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           return (
@@ -49,10 +50,10 @@ export const SettingsNav: React.FC<SettingsNavProps> = ({
               to={tab.path}
               end={tab.path === '/settings'}
               className={({ isActive }) =>
-                `flex items-center gap-2 px-3 py-2 rounded-xl whitespace-nowrap transition-all select-none ${
+                `flex items-center gap-2 px-3 py-1.5 rounded-lg whitespace-nowrap transition-all select-none ${
                   isActive
-                    ? 'bg-blue-600/15 text-blue-400 border border-blue-500/30 font-semibold shadow-sm'
-                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40 border border-transparent'
+                    ? 'bg-emerald-50 text-emerald-950 border border-emerald-300 font-bold shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50 border border-transparent'
                 }`
               }
             >
