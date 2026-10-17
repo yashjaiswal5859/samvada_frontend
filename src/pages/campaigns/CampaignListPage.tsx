@@ -29,85 +29,7 @@ import { getAnalyticsSummary } from '../../api/analytics';
 import { AnalyticsSummary } from '../../types';
 import { formatDuration, formatDate } from '../../utils/formatters';
 import { Modal } from '../../components/ui/Modal';
-
-interface CampaignItem {
-  id: string;
-  name: string;
-  subtitle: string;
-  agent: string;
-  agentAvatar: string;
-  status: 'active' | 'scheduled' | 'completed' | 'draft' | 'paused';
-  totalContacts: number;
-  completedCalls: number;
-  successfulCalls: number;
-  connectRate: number;
-  concurrencyLimit: number;
-  schedule: string;
-  createdAt: string;
-}
-
-const DEFAULT_CAMPAIGNS: CampaignItem[] = [
-  {
-    id: 'camp-1',
-    name: 'Q4 Enterprise SaaS Expansion Outreach',
-    subtitle: 'Outbound qualification for high-intent whitepaper download leads',
-    agent: 'Liam (Enterprise SDR)',
-    agentAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80',
-    status: 'active',
-    totalContacts: 2400,
-    completedCalls: 1680,
-    successfulCalls: 1180,
-    connectRate: 70.2,
-    concurrencyLimit: 8,
-    schedule: 'Mon-Fri • 09:00 - 17:00 EST',
-    createdAt: '2026-10-02',
-  },
-  {
-    id: 'camp-2',
-    name: 'Healthcare Preventive Screening Intake',
-    subtitle: 'Annual health check reminders and scheduling for enrolled patients',
-    agent: 'David (Clinical Triage)',
-    agentAvatar: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=150&q=80',
-    status: 'active',
-    totalContacts: 1500,
-    completedCalls: 920,
-    successfulCalls: 690,
-    connectRate: 75.0,
-    concurrencyLimit: 6,
-    schedule: 'Mon-Sat • 10:00 - 18:00 Local',
-    createdAt: '2026-10-04',
-  },
-  {
-    id: 'camp-3',
-    name: 'Hospitality VIP Guest Pre-Arrival Concierge',
-    subtitle: 'Pre-check-in itinerary confirmation and suite amenity requests',
-    agent: 'Maya (Luxury Hospitality)',
-    agentAvatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80',
-    status: 'scheduled',
-    totalContacts: 650,
-    completedCalls: 0,
-    successfulCalls: 0,
-    connectRate: 0,
-    concurrencyLimit: 4,
-    schedule: 'Scheduled: Oct 12, 10:00 AM',
-    createdAt: '2026-10-05',
-  },
-  {
-    id: 'camp-4',
-    name: 'Overdue Invoice Account Restructuring',
-    subtitle: 'Gentle outbound payment plan restructuring for 30-day past-due accounts',
-    agent: 'Elena (Fintech Resolution)',
-    agentAvatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=150&q=80',
-    status: 'paused',
-    totalContacts: 1100,
-    completedCalls: 450,
-    successfulCalls: 290,
-    connectRate: 64.4,
-    concurrencyLimit: 5,
-    schedule: 'Paused by Supervisor',
-    createdAt: '2026-09-28',
-  },
-];
+import { CampaignItem, DEFAULT_CAMPAIGNS } from '../../utils/constants';
 
 export const CampaignListPage: React.FC = () => {
   const navigate = useNavigate();
@@ -275,7 +197,7 @@ export const CampaignListPage: React.FC = () => {
       </div>
 
       {/* ── 4-Card KPI Metric Strip with Corner-Anchored Icons (Deep Emerald & Slate) ── */}
-      <div className="grid grid-cols-1 min-[480px]:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className={campaigns.length === 0 ? 'hidden' : 'grid grid-cols-1 min-[480px]:grid-cols-2 lg:grid-cols-4 gap-4'}>
         {/* Active Campaigns */}
         <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs relative overflow-hidden flex flex-col justify-between">
           <Megaphone className="w-20 h-20 text-emerald-500/10 absolute -bottom-3 -right-3 pointer-events-none" />
@@ -304,7 +226,7 @@ export const CampaignListPage: React.FC = () => {
               {totalCallsPlaced.toLocaleString()}
             </span>
           </div>
-          <p className="text-[11px] text-slate-500 mt-1">
+          <p className="text-xs text-slate-600 mt-1">
             <strong className="text-emerald-700">{totalSuccessful.toLocaleString()}</strong> conversations answered
           </p>
         </div>
@@ -323,7 +245,7 @@ export const CampaignListPage: React.FC = () => {
               {avgConnectRate}%
             </span>
           </div>
-          <p className="text-[11px] text-slate-500 mt-1">Industry benchmark: 42%</p>
+          <p className="text-xs text-slate-600 mt-1">Industry benchmark: 42%</p>
         </div>
 
         {/* Active Concurrency */}
@@ -338,12 +260,12 @@ export const CampaignListPage: React.FC = () => {
               <div className="bg-emerald-600 h-full rounded-full transition-all" style={{ width: '28%' }} />
             </div>
           </div>
-          <p className="text-[11px] text-slate-500 mt-1">36 channels reserve available</p>
+          <p className="text-xs text-slate-600 mt-1">36 channels available</p>
         </div>
       </div>
 
       {/* ── TCPA & DNC Regulatory Compliance Banner ── */}
-      <div className="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200/80 flex items-center justify-between text-xs text-emerald-950 shadow-2xs">
+      {campaigns.length > 0 && <div className="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200/80 flex items-center justify-between text-xs text-emerald-950 shadow-2xs">
         <div className="flex items-center gap-2.5">
           <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
           <span>
@@ -353,7 +275,7 @@ export const CampaignListPage: React.FC = () => {
         <span className="hidden sm:inline font-mono text-[11px] text-emerald-800 font-bold shrink-0">
           100% TCPA Compliant
         </span>
-      </div>
+      </div>}
 
       {/* ── Campaign Subtabs & Filter Toolbar ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-2">
@@ -377,6 +299,7 @@ export const CampaignListPage: React.FC = () => {
           <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
+            aria-label="Search campaigns"
             placeholder="Search campaigns or agents..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -398,10 +321,12 @@ export const CampaignListPage: React.FC = () => {
             <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 mx-auto mb-3">
               <Megaphone className="w-6 h-6 text-slate-400" />
             </div>
-            <h3 className="text-sm font-bold text-slate-800">No Campaigns Found</h3>
+            <h2 className="text-sm font-bold text-slate-800">
+              {campaigns.length === 0 ? 'Create your first campaign' : 'No matching campaigns'}
+            </h2>
             <p className="text-xs text-slate-500 max-w-md mx-auto mt-1 leading-relaxed">
-              {searchQuery || activeTab !== 'all'
-                ? 'No campaigns match your active filter criteria. Try clearing search or tab filters.'
+              {campaigns.length > 0
+                ? 'No campaigns match your active filters. Try clearing search or selecting another status.'
                 : 'Create an outbound calling campaign to automate lead qualification, customer check-ins, or appointment reminders with your voice agents.'}
             </p>
             {activeTab === 'all' && !searchQuery && (

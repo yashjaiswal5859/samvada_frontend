@@ -1,986 +1,1462 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Modal } from '../ui/Modal';
-import { AVAILABLE_VOICES, AVAILABLE_MODELS } from '../../utils/constants';
-import { createAgent } from '../../api/agents';
+import { createAgent, updateAgent, getAgent, getAgentBuilderResources } from '../../api/agents';
+import { formatIntegrations } from '../../api/integrations';
 import {
-  getKnowledgeBases,
-  getKnowledgeDocuments,
-  createKnowledgeBase,
-  uploadKnowledgeFile,
-} from '../../api/knowledge';
-import { Agent, KnowledgeBase, KnowledgeDocument } from '../../types';
-import { useWorkspace } from '../../contexts/WorkspaceContext';
+  AVAILABLE_VOICES,
+  DEFAULT_VOICE_PROMPT_TEMPLATE,
+  DEFAULT_INBOUND_GREETING,
+  DEFAULT_OUTBOUND_GREETING,
+  populateOrgName,
+  AGENT_CREATION_STEPS as STEPS,
+  SUPPORTED_LANGUAGES as LANGUAGES,
+  TELEPHONY_PROVIDER_OPTIONS as TELEPHONY_OPTIONS,
+  STT_PROVIDER_OPTIONS as STT_OPTIONS,
+  LLM_PROVIDER_OPTIONS as LLM_OPTIONS,
+  TTS_PROVIDER_OPTIONS as TTS_OPTIONS,
+  ProviderOption,
+} from '../../utils/constants';
+import { Agent, Integration, KnowledgeBase, Voice } from '../../types';
 import { useToast } from '../../contexts/ToastContext';
+import { useWorkspace } from '../../contexts/WorkspaceContext';
 import {
-  Sparkles,
-  Bot,
-  CheckCircle2,
-  ArrowRight,
   ArrowLeft,
-  Upload,
-  FileText,
-  Shield,
-  PhoneCall,
-  Copy,
+  ArrowRight,
+  AudioLines,
+  Bot,
   Check,
-  Lock,
-  FileCode,
-  Loader2,
-  RefreshCw,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+  Folder,
   FolderOpen,
-  FileCheck
+  Globe,
+  Loader2,
+  Mic,
+  Pencil,
+  PhoneCall,
+  PhoneIncoming,
+  PhoneOutgoing,
+  PhoneForwarded,
+  RotateCcw,
+  Search,
+  Sparkles,
+  FileText,
+  Copy,
 } from 'lucide-react';
 
 interface CreateAgentModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (agent: Agent) => void;
-  initialPrompt?: string;
-  initialName?: string;
+  agent?: Agent | null;
+  agentId?: string | null;
 }
+
+type Step = 1 | 2 | 3 | 4;
+
+// Module-level cache to avoid repeating network roundtrips on modal re-open
+let cachedResources: {
+  stt?: any[];
+  tts?: any[];
+  llm?: any[];
+  kbs?: KnowledgeBase[];
+  integrations?: Integration[];
+} | null = null;
+
+export { DEFAULT_VOICE_PROMPT_TEMPLATE };
+
+const splitEntries = (value: string) => value.split(/[\n,]/).map((entry) => entry.trim()).filter(Boolean);
+
+const SelectField: React.FC<{
+  label: string;
+  value: string;
+  options: ProviderOption[];
+  onChange: (value: string) => void;
+  icon: React.ReactNode;
+}> = ({ label, value, options, onChange, icon }) => (
+  <label className="block min-w-0">
+    <span className="mb-1.5 flex items-center gap-2 text-xs font-semibold text-slate-800">
+      <span className="text-emerald-800">{icon}</span>{label}
+    </span>
+    <span className="relative block">
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="min-h-11 w-full appearance-none rounded-xl border border-slate-200 bg-white px-3.5 pr-9 text-sm font-semibold text-slate-900 outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/15"
+      >
+        {options.map((option) => (
+          <option key={option.id} value={option.id}>{option.name}{option.recommended ? ' · Recommended' : ''}</option>
+        ))}
+      </select>
+      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+    </span>
+    <span className="mt-1.5 block text-[11px] leading-relaxed text-slate-500">
+      {options.find((option) => option.id === value)?.note}
+    </span>
+  </label>
+);
 
 export const CreateAgentModal: React.FC<CreateAgentModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
-  initialPrompt = '',
-  initialName = '',
+  agent = null,
+  agentId = null,
 }) => {
   const navigate = useNavigate();
   const toast = useToast();
-  const { currentWorkspace } = useWorkspace();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { organizationName } = useWorkspace();
+  const orgName = organizationName || 'our organization';
 
-  // Stepper: 1: Identity & Goal, 2: Knowledge Base, 3: Guardrails, 4: Review
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
+  const targetAgentId = agent?.id || agentId;
+  const isEditMode = Boolean(targetAgentId);
 
-  // Step 1: Identity, Role, Description (Intention) & Starting Sentence
-  const [name, setName] = useState(initialName || '');
-  const [role, setRole] = useState('Voice Assistant');
-  const [description, setDescription] = useState('');
-  const [startingSentence, setStartingSentence] = useState('Hello! Thank you for calling. How can I help you today?');
-  const [selectedVoice, setSelectedVoice] = useState(AVAILABLE_VOICES[0].id);
-  const [selectedModel, setSelectedModel] = useState(AVAILABLE_MODELS[0].id);
+  const [currentStep, setCurrentStep] = useState<Step>(1);
+  const [name, setName] = useState('Cathy');
+  const [description, setDescription] = useState(`Handles incoming customer inquiries, bookings, and support for ${orgName} with structured call flows.`);
+  const [systemPrompt, setSystemPrompt] = useState(() => populateOrgName(DEFAULT_VOICE_PROMPT_TEMPLATE, orgName));
+  const [callDirection, setCallDirection] = useState<'inbound' | 'outbound' | 'both'>('inbound');
 
-  // Step 2: Knowledge Base
+  const [primaryLanguage, setPrimaryLanguage] = useState('en-IN');
+  const [additionalLanguages, setAdditionalLanguages] = useState<string[]>(['hi-IN']);
+  const [greetingMode, setGreetingMode] = useState<'static' | 'dynamic'>('static');
+  const [inboundGreeting, setInboundGreeting] = useState(() => populateOrgName(DEFAULT_INBOUND_GREETING, orgName));
+  const [outboundGreeting, setOutboundGreeting] = useState(() => populateOrgName(DEFAULT_OUTBOUND_GREETING, orgName));
+  const [pauseBeforeSpeakingMs, setPauseBeforeSpeakingMs] = useState(400);
+  const [allowInterruptions, setAllowInterruptions] = useState(true);
+  const [speakingRate, setSpeakingRate] = useState(1);
+  const [silenceBehavior, setSilenceBehavior] = useState<'prompt-again' | 'handoff' | 'end-call'>('prompt-again');
+  const [silenceTimeoutSeconds, setSilenceTimeoutSeconds] = useState(5);
+  const [telephonyProvider, setTelephonyProvider] = useState('plivo');
+  const [sttProvider, setSttProvider] = useState('deepgram');
+  const [sttKeyterms, setSttKeyterms] = useState('');
+  const [model, setModel] = useState('gpt-mini');
+  const [ttsProvider, setTtsProvider] = useState<Voice['provider']>('fish-audio');
+  const [voiceId, setVoiceId] = useState('fish-swara-hi-en');
+
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
-  const [selectedKbId, setSelectedKbId] = useState<string>('');
-  const [kbDocs, setKbDocs] = useState<KnowledgeDocument[]>([]);
-  const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
-  const [isLoadingKbs, setIsLoadingKbs] = useState(false);
-  const [isUploadingDoc, setIsUploadingDoc] = useState(false);
-  const [showFormatGuide, setShowFormatGuide] = useState(false);
-  const [copiedFormatIndex, setCopiedFormatIndex] = useState<number | null>(null);
+  const [selectedKbIds, setSelectedKbIds] = useState<string[]>([]);
+  const [knowledgeSearch, setKnowledgeSearch] = useState('');
+  const [isLoadingResources, setIsLoadingResources] = useState(false);
+  const [resourceLoadError, setResourceLoadError] = useState(false);
+  const [integrations, setIntegrations] = useState<Integration[]>([]);
+  const [selectedTools, setSelectedTools] = useState<string[]>([]);
 
-  // Step 3: Guardrails
-  const [enablePiiMasking, setEnablePiiMasking] = useState(true);
-  const [enableHallucinationLock, setEnableHallucinationLock] = useState(true);
-  const [prohibitedTopics, setProhibitedTopics] = useState('Competitor comparisons, personal political views, investment or medical advice outside policy');
-  const [escalationKeywords, setEscalationKeywords] = useState('talk to human, representative, supervisor, speak with manager, cancel my account');
-  const [mandatoryDisclaimer, setMandatoryDisclaimer] = useState('This call is recorded for quality assurance and training.');
-  const [enableDisclaimer, setEnableDisclaimer] = useState(false);
-
-  // Step 4: Final Prompt & Submission
-  const [finalPrompt, setFinalPrompt] = useState('');
+  const [escalationPhoneNumber, setEscalationPhoneNumber] = useState('');
+  const [isPromptExpanded, setIsPromptExpanded] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Sync initial parameters
-  useEffect(() => {
-    if (initialName) setName(initialName);
-    if (initialPrompt) {
-      setDescription(initialPrompt);
-      setFinalPrompt(initialPrompt);
+  const [sttOptions, setSttOptions] = useState<ProviderOption[]>(STT_OPTIONS);
+  const [llmOptions, setLlmOptions] = useState<ProviderOption[]>(LLM_OPTIONS);
+  const [ttsOptions, setTtsOptions] = useState<Array<ProviderOption & { id: Voice['provider'] }>>(TTS_OPTIONS);
+
+  const voicesForProvider = useMemo(
+    () => AVAILABLE_VOICES.filter((voice) => voice.provider === ttsProvider),
+    [ttsProvider]
+  );
+
+  const selectedVoice = voicesForProvider.find((voice) => voice.id === voiceId)
+    || AVAILABLE_VOICES.find((voice) => voice.id === voiceId)
+    || voicesForProvider[0]
+    || AVAILABLE_VOICES[0];
+  const readyIntegrations = integrations.filter((integration) => integration.connected);
+
+  const primaryLangObj = useMemo(() => LANGUAGES.find((l) => l.id === primaryLanguage), [primaryLanguage]);
+  const primaryLangName = primaryLangObj?.name || primaryLanguage;
+
+  const additionalLangNames = useMemo(
+    () => additionalLanguages.map((code) => LANGUAGES.find((l) => l.id === code)?.name || code),
+    [additionalLanguages]
+  );
+
+  const telephonyObj = useMemo(() => TELEPHONY_OPTIONS.find((t) => t.id === telephonyProvider), [telephonyProvider]);
+  const telephonyName = telephonyObj?.name || telephonyProvider;
+
+  const sttObj = useMemo(() => sttOptions.find((s) => s.id === sttProvider), [sttOptions, sttProvider]);
+  const sttName = sttObj?.name || sttProvider;
+
+  const llmObj = useMemo(() => llmOptions.find((m) => m.id === model), [llmOptions, model]);
+  const llmName = llmObj?.name || model;
+
+  const ttsObj = useMemo(() => ttsOptions.find((t) => t.id === ttsProvider), [ttsOptions, ttsProvider]);
+  const ttsName = ttsObj?.name || ttsProvider;
+
+  const selectedKBs = useMemo(
+    () => knowledgeBases.filter((kb) => selectedKbIds.includes(kb.id)),
+    [knowledgeBases, selectedKbIds]
+  );
+
+  const selectedToolList = useMemo(
+    () => readyIntegrations.filter((tool) => selectedTools.includes(tool.id)),
+    [readyIntegrations, selectedTools]
+  );
+
+  const parsedKeyterms = useMemo(() => splitEntries(sttKeyterms), [sttKeyterms]);
+
+  const filteredKnowledgeBases = useMemo(() => {
+    const query = knowledgeSearch.trim().toLowerCase();
+    if (!query) return knowledgeBases;
+    return knowledgeBases.filter(
+      (base) =>
+        base.name.toLowerCase().includes(query) ||
+        (base.description && base.description.toLowerCase().includes(query))
+    );
+  }, [knowledgeBases, knowledgeSearch]);
+
+  // Helper to map and apply catalog model options
+  const applyCatalog = (catalog: { stt?: any[]; tts?: any[]; llm?: any[] }) => {
+    if (catalog.stt?.length) {
+      setSttOptions(catalog.stt.map((m) => ({
+        id: m.id,
+        name: m.name,
+        note: m.note || m.provider,
+        recommended: m.is_recommended,
+      })));
     }
-  }, [initialName, initialPrompt]);
-
-  // Load Knowledge bases when modal opens
-  useEffect(() => {
-    if (!isOpen) return;
-    setIsLoadingKbs(true);
-    getKnowledgeBases()
-      .then((kbs) => {
-        setKnowledgeBases(kbs);
-        if (kbs.length > 0) {
-          setSelectedKbId(kbs[0].id);
-          return getKnowledgeDocuments(kbs[0].id);
-        }
-        return [];
-      })
-      .then((docs) => {
-        setKbDocs(docs || []);
-      })
-      .catch((err) => {
-        console.warn('Could not load knowledge bases', err);
-      })
-      .finally(() => setIsLoadingKbs(false));
-  }, [isOpen]);
-
-  // When selected KB changes, load docs
-  const handleSelectKb = async (kbId: string) => {
-    setSelectedKbId(kbId);
-    try {
-      const docs = await getKnowledgeDocuments(kbId);
-      setKbDocs(docs);
-    } catch {
-      setKbDocs([]);
+    if (catalog.llm?.length) {
+      setLlmOptions(catalog.llm.map((m) => ({
+        id: m.id,
+        name: m.name,
+        note: m.note || m.provider,
+        recommended: m.is_recommended,
+      })));
+    }
+    if (catalog.tts?.length) {
+      setTtsOptions(catalog.tts.map((m) => ({
+        id: (m.id || m.provider) as Voice['provider'],
+        name: m.name,
+        note: m.note || m.provider,
+        recommended: m.is_recommended,
+      })));
     }
   };
 
-  // Toggle document selection for RAG
-  const toggleDocSelection = (docId: string) => {
-    setSelectedDocIds((prev) =>
-      prev.includes(docId) ? prev.filter((id) => id !== docId) : [...prev, docId]
+  // Step 1: Initialize form & load phone numbers only
+  useEffect(() => {
+    if (!isOpen) return;
+
+    setCurrentStep(1);
+
+    const initFromAgent = (a: Agent) => {
+      setName(a.name || '');
+      setDescription(a.description || '');
+      setSystemPrompt(a.systemPrompt || a.toolsConfig?.systemPrompt || populateOrgName(DEFAULT_VOICE_PROMPT_TEMPLATE, orgName));
+      setCallDirection(a.callDirection || a.toolsConfig?.callDirection || 'inbound');
+
+      const pLang = a.primaryLanguage || a.language || a.toolsConfig?.primaryLanguage || 'en-IN';
+      setPrimaryLanguage(pLang);
+
+      const addLangs = a.additionalLanguages || a.toolsConfig?.additionalLanguages ||
+        (Array.isArray(a.supportedLanguages) ? a.supportedLanguages.filter((l: string) => l !== pLang) : ['hi-IN']);
+      setAdditionalLanguages(addLangs);
+
+      setGreetingMode(a.greetingMode || a.toolsConfig?.greetingMode || 'static');
+      setInboundGreeting(a.inboundGreeting || a.greetingText || a.toolsConfig?.inboundGreeting || populateOrgName(DEFAULT_INBOUND_GREETING, orgName));
+      setOutboundGreeting(a.outboundGreeting || a.greetingText || a.toolsConfig?.outboundGreeting || populateOrgName(DEFAULT_OUTBOUND_GREETING, orgName));
+
+      setPauseBeforeSpeakingMs(typeof a.pauseBeforeSpeakingMs === 'number' ? a.pauseBeforeSpeakingMs : (typeof a.toolsConfig?.pauseBeforeSpeakingMs === 'number' ? a.toolsConfig.pauseBeforeSpeakingMs : 400));
+      setAllowInterruptions(a.allowInterruptions ?? a.toolsConfig?.allowInterruptions ?? a.toolsConfig?.voiceBehavior?.allowInterruptions ?? true);
+      setSpeakingRate(typeof a.speakingRate === 'number' ? a.speakingRate : (typeof a.toolsConfig?.speakingRate === 'number' ? a.toolsConfig.speakingRate : 1));
+      setSilenceBehavior(a.silenceBehavior || a.toolsConfig?.silenceBehavior || a.toolsConfig?.voiceBehavior?.silenceBehavior || 'prompt-again');
+      setSilenceTimeoutSeconds(a.silenceTimeoutSeconds ?? a.toolsConfig?.silenceTimeoutSeconds ?? a.toolsConfig?.voiceBehavior?.silenceTimeoutSeconds ?? 5);
+
+      setTelephonyProvider(a.telephonyProvider || a.toolsConfig?.telephonyProvider || 'plivo');
+      setSttProvider(a.sttProvider || a.toolsConfig?.sttProvider || 'deepgram');
+
+      const rawKeyterms = a.sttKeyterms || a.toolsConfig?.sttKeyterms || '';
+      setSttKeyterms(Array.isArray(rawKeyterms) ? rawKeyterms.join(', ') : rawKeyterms);
+
+      setModel(a.model || a.toolsConfig?.model || 'gpt-mini');
+      const nextTts = (a.ttsProvider || a.toolsConfig?.ttsProvider || 'fish-audio') as Voice['provider'];
+      setTtsProvider(nextTts);
+      setVoiceId(a.voiceId || a.toolsConfig?.voiceId || 'fish-swara-hi-en');
+
+      setSelectedKbIds(a.knowledgeBaseIds || a.toolsConfig?.knowledgeBaseIds || []);
+      setKnowledgeSearch('');
+
+      const rawTools = a.toolAllowlist || a.toolsConfig?.toolAllowlist || a.toolsConfig?.selectedTools || [];
+      setSelectedTools(rawTools);
+
+      setEscalationPhoneNumber(a.escalationPhoneNumber || a.toolsConfig?.escalationPhoneNumber || (a as any).guardrails?.escalationPhoneNumber || '');
+      setIsPromptExpanded(false);
+      setResourceLoadError(false);
+    };
+
+    if (agent) {
+      initFromAgent(agent);
+    } else if (agentId) {
+      getAgent(agentId).then((loaded) => {
+        if (loaded) initFromAgent(loaded);
+      }).catch(console.error);
+    } else {
+      setName('Cathy');
+      setDescription(`Handles incoming customer inquiries, bookings, and support for ${orgName} with structured call flows.`);
+      setSystemPrompt(populateOrgName(DEFAULT_VOICE_PROMPT_TEMPLATE, orgName));
+      setCallDirection('inbound');
+      setPrimaryLanguage('en-IN');
+      setAdditionalLanguages(['hi-IN']);
+      setGreetingMode('static');
+      setInboundGreeting(populateOrgName(DEFAULT_INBOUND_GREETING, orgName));
+      setOutboundGreeting(populateOrgName(DEFAULT_OUTBOUND_GREETING, orgName));
+      setPauseBeforeSpeakingMs(400);
+      setAllowInterruptions(true);
+      setSpeakingRate(1);
+      setSilenceBehavior('prompt-again');
+      setSilenceTimeoutSeconds(5);
+      setTelephonyProvider('plivo');
+      setSttProvider('deepgram');
+      setSttKeyterms('');
+      setModel('gpt-mini');
+      setTtsProvider('fish-audio');
+      setVoiceId('fish-swara-hi-en');
+      setSelectedKbIds([]);
+      setKnowledgeSearch('');
+      setSelectedTools([]);
+      setEscalationPhoneNumber('');
+      setIsPromptExpanded(false);
+      setResourceLoadError(false);
+    }
+
+    if (cachedResources) {
+      applyCatalog({
+        stt: cachedResources.stt,
+        tts: cachedResources.tts,
+        llm: cachedResources.llm,
+      });
+      if (cachedResources.kbs) setKnowledgeBases(cachedResources.kbs);
+      if (cachedResources.integrations) setIntegrations(cachedResources.integrations);
+      return;
+    }
+
+    let isCurrent = true;
+    setIsLoadingResources(true);
+
+    // 1 Single Unified GET API fetches models, KBs, and integrations together
+    getAgentBuilderResources()
+      .then((res) => {
+        if (!isCurrent) return;
+
+        // 1. AI Models (STT, TTS, LLM)
+        applyCatalog({
+          stt: res.stt || [],
+          tts: res.tts || [],
+          llm: res.llm || [],
+        });
+
+        // 3. Knowledge Bases
+        let mappedKBs: KnowledgeBase[] = [];
+        if (res.knowledge_bases?.length) {
+          mappedKBs = res.knowledge_bases.map((item: any) => ({
+            id: item.id,
+            workspaceId: item.workspace_id || item.workspaceId || '',
+            name: item.name,
+            description: item.description || '',
+            documentCount: Number(item.document_count ?? item.documentCount ?? 0),
+            chunkCount: Number(item.chunk_count ?? item.chunkCount ?? 0),
+            createdAt: item.created_at || item.createdAt || new Date().toISOString(),
+            updatedAt: item.updated_at || item.updatedAt || new Date().toISOString(),
+          }));
+          setKnowledgeBases(mappedKBs);
+        }
+
+        // 4. Integrations
+        const mappedIntegrations = formatIntegrations(res.integrations || []);
+        setIntegrations(mappedIntegrations);
+
+        // Cache for subsequent modal opens
+        cachedResources = {
+          stt: res.stt,
+          tts: res.tts,
+          llm: res.llm,
+          kbs: mappedKBs,
+          integrations: mappedIntegrations,
+        };
+      })
+      .catch((err) => {
+        console.warn('Failed to load agent builder resources', err);
+        if (isCurrent) setResourceLoadError(true);
+      })
+      .finally(() => {
+        if (isCurrent) setIsLoadingResources(false);
+      });
+
+    return () => { isCurrent = false; };
+  }, [isOpen]);
+
+  const toggleLanguage = (languageId: string) => {
+    setAdditionalLanguages((current) => current.includes(languageId)
+      ? current.filter((id) => id !== languageId)
+      : [...current, languageId]);
+  };
+
+  const handleCallDirectionChange = (direction: typeof callDirection) => {
+    setCallDirection(direction);
+  };
+
+  const handleTtsProviderChange = (provider: string) => {
+    const nextProvider = provider as Voice['provider'];
+    setTtsProvider(nextProvider);
+    const firstVoice = AVAILABLE_VOICES.find((voice) => voice.provider === nextProvider);
+    if (firstVoice) setVoiceId(firstVoice.id);
+  };
+
+  const toggleKnowledgeBase = (kbId: string) => {
+    setSelectedKbIds((current) =>
+      current.includes(kbId)
+        ? current.filter((id) => id !== kbId)
+        : [...current, kbId]
     );
   };
 
-  // File Upload directly inside creation modal
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsUploadingDoc(true);
-    try {
-      let targetKbId = selectedKbId;
-      if (!targetKbId) {
-        // Create an initial KB for the workspace
-        const newKb = await createKnowledgeBase(`${name || 'General'} Knowledge Base`, 'Auto-created during agent setup');
-        if (newKb) {
-          targetKbId = newKb.id;
-          setKnowledgeBases((prev) => [...prev, newKb]);
-          setSelectedKbId(targetKbId);
-        }
-      }
-
-      if (targetKbId) {
-        const uploaded = await uploadKnowledgeFile(targetKbId, file);
-        if (uploaded) {
-          setKbDocs((prev) => [uploaded, ...prev]);
-          setSelectedDocIds((prev) => [...prev, uploaded.id]);
-          toast.success('Document Uploaded & Indexed', `"${file.name}" is now connected to this agent.`);
-        }
-      }
-    } catch (err: any) {
-      toast.error('Upload Failed', err?.message || 'Could not upload file to knowledge base.');
-    } finally {
-      setIsUploadingDoc(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
+  const toggleTool = (integrationId: string) => {
+    setSelectedTools((current) => current.includes(integrationId)
+      ? current.filter((id) => id !== integrationId)
+      : [...current, integrationId]);
   };
 
-  // Build the compiled system prompt from description, opener, knowledge & guardrails
-  const compileSystemPrompt = () => {
-    const selectedDocNames = kbDocs.filter((d) => selectedDocIds.includes(d.id)).map((d) => d.name);
 
-    return `### 1. IDENTITY & PRIMARY ROLE
-You are "${name || 'Samvada Voice Agent'}", serving in the role of ${role || 'AI Voice Assistant'}.
 
-### 2. CORE INTENTION & INSTRUCTIONS
-${
-  description.trim()
-    ? description.trim()
-    : 'Assist callers attentively, provide helpful and accurate information, and guide the conversation toward resolving their request smoothly.'
-}
-
-### 3. CONVERSATIONAL SPEECH RULES
-- FIRST SPOKEN SENTENCE WHEN CALL CONNECTS:
-  "${startingSentence.trim() || 'Hello! How can I help you today?'}"
-- Speak in natural, conversational, concise speech. Avoid long monologues.
-- Limit each turn to 1 to 2 spoken sentences, then pause and allow the human to respond.
-- Never read out raw markdown, URLs, or asterisks.
-
-### 4. KNOWLEDGE BASE & GROUNDING (RAG)
-${
-  selectedDocNames.length > 0
-    ? `You have access to the following verified documentation: [${selectedDocNames.join(', ')}].
-Cite facts strictly from these documents. Do not speculate or introduce unverified terms.`
-    : `Answer questions according to standard verified organizational policies.`
-}
-
-### 5. GUARDRAILS & SAFETY BOUNDARIES
-${enablePiiMasking ? `- PII REDACTION: Strictly never ask for or repeat passwords, full credit card numbers, CVVs, or Social Security numbers.` : ''}
-${enableHallucinationLock ? `- HALLUCINATION LOCK: If you do not know the answer with 100% certainty, politely respond: "I want to make sure you have the exact facts, so let me connect you with a specialist on our team."` : ''}
-${prohibitedTopics.trim() ? `- PROHIBITED TOPICS: Never discuss or comment on: ${prohibitedTopics}. Politely steer the conversation back to company services.` : ''}
-${escalationKeywords.trim() ? `- HUMAN ESCALATION: If the caller explicitly says any of [${escalationKeywords}], acknowledge immediately and transition to transfer protocol.` : ''}
-${enableDisclaimer && mandatoryDisclaimer.trim() ? `- COMPLIANCE NOTICE: Ensure the caller is notified: "${mandatoryDisclaimer}"` : ''}
-`;
-  };
-
-  // When progressing to Step 4, automatically compile the prompt
-  useEffect(() => {
-    if (currentStep === 4) {
-      setFinalPrompt(compileSystemPrompt());
-    }
-  }, [currentStep]);
-
-  // Handle Final Submission
   const handleSubmitAgent = async () => {
-    if (!name.trim()) {
-      toast.error('Name Required', 'Please enter a name for your voice agent.');
+    if (!systemPrompt.trim()) {
+      toast.error('Instructions required', 'Please provide or customize the agent instructions blueprint.');
       setCurrentStep(1);
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const created = await createAgent({
-        name: name.trim(),
-        role: role.trim(),
-        voiceId: selectedVoice,
-        model: selectedModel,
-        description: description.trim() || `Configured for ${role}`,
-        systemPrompt: finalPrompt || compileSystemPrompt(),
-      });
+      const payload: any = {
+        name: name.trim() || (agent ? agent.name : 'Cathy'),
+        role: 'Voice Assistant',
+        description: description.trim() || 'Voice assistant configured with structured call blueprint',
+        systemPrompt: systemPrompt.trim(),
+        callDirection,
+        language: primaryLanguage,
+        primaryLanguage,
+        additionalLanguages,
+        supportedLanguages: [...new Set([primaryLanguage, ...additionalLanguages])],
+        voiceId: selectedVoice?.id || voiceId,
+        voiceName: selectedVoice?.name || '',
+        model,
+        status: agent?.status || 'active',
+        telephonyProvider,
+        sttProvider,
+        ttsProvider,
+        firstSpeaker: 'agent',
+        greetingMode,
+        greetingText: callDirection === 'outbound' ? outboundGreeting.trim() : inboundGreeting.trim(),
+        inboundGreeting: inboundGreeting.trim(),
+        outboundGreeting: outboundGreeting.trim(),
+        pauseBeforeSpeakingMs,
+        sttKeyterms: splitEntries(sttKeyterms),
+        voiceBehavior: { allowInterruptions, speakingRate, silenceBehavior, silenceTimeoutSeconds },
+        speakingRate,
+        allowInterruptions,
+        silenceBehavior,
+        silenceTimeoutSeconds,
+        knowledgeBaseIds: selectedKbIds,
+        knowledgeDocumentIds: [],
+        toolAllowlist: selectedTools,
+        escalationPhoneNumber: escalationPhoneNumber.trim() || undefined,
+        guardrails: {
+          redactSensitiveData: true,
+          groundAnswersInKnowledge: true,
+          restrictedTopics: [],
+          prohibitedPromises: [],
+          escalationTriggers: escalationPhoneNumber.trim() ? [`Transfer to ${escalationPhoneNumber.trim()}`] : [],
+          aiDisclosure: 'This call is assisted by an AI voice agent.',
+          recordingDisclosure: 'This call may be recorded for quality and compliance purposes.',
+          customRules: '',
+          escalationPhoneNumber: escalationPhoneNumber.trim(),
+        },
+        complianceFlags: {
+          aiDisclosureRequired: true,
+          recordingDisclosureRequired: true,
+          outboundDndDncChecksRequired: true,
+        },
+      };
 
-      toast.success('Agent Created Successfully', `"${created.name}" is now live and ready for calls.`);
-      setIsSubmitting(false);
-      onSuccess(created);
-      onClose();
-      navigate(`/agents/${created.id}`);
-    } catch (err: any) {
-      console.error('Failed to create agent', err);
-      toast.error('Creation Failed', err?.message || 'Server was unable to register the voice agent.');
+      if (isEditMode && targetAgentId) {
+        const updated = await updateAgent(targetAgentId, payload);
+        toast.success('Agent updated', `“${updated.name || name}” configuration has been updated.`);
+        onSuccess(updated);
+        onClose();
+      } else {
+        const created = await createAgent(payload);
+        toast.success('Agent created', `“${created.name}” is now active and ready.`);
+        onSuccess(created);
+        onClose();
+      }
+    } catch (error: any) {
+      console.error(isEditMode ? 'Failed to update agent' : 'Failed to create agent', error);
+      toast.error(isEditMode ? 'Could not update agent' : 'Could not create agent', error?.message || 'Please try again.');
+    } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Best Format Examples for Knowledge Base
-  const formatExamples = [
-    {
-      title: 'Format 1: Question & Answer Pairs (Recommended for FAQs)',
-      ext: '.md or .txt',
-      desc: 'Ideal for customer care, return policies, hours of operation, and product pricing.',
-      sample: `# Customer Support & Shipping FAQ
 
-Q: What are your customer service hours?
-A: Our team is available Monday through Friday from 8:00 AM to 8:00 PM Eastern Time.
 
-Q: How long does express shipping take?
-A: Express shipping delivers within 2 business days across the continental United States.
+  const renderFooter = (backStep?: Step, nextStep?: Step) => (
+    <div className="flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
+      {backStep ? (
+        <button type="button" onClick={() => setCurrentStep(backStep)} className="flex min-h-10 items-center gap-2 rounded-xl px-3 text-xs font-semibold text-slate-600 transition hover:bg-slate-100">
+          <ArrowLeft className="h-4 w-4" /> Back
+        </button>
+      ) : <span className="text-[11px] text-slate-400">You can edit these settings anytime.</span>}
+      {nextStep ? (
+        <button type="button" onClick={() => setCurrentStep(nextStep)} disabled={nextStep === 2 && !systemPrompt.trim()} className="flex min-h-10 items-center gap-2 rounded-xl bg-emerald-950 px-5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-45">
+          Continue <ArrowRight className="h-4 w-4" />
+        </button>
+      ) : (
+        <button type="button" onClick={handleSubmitAgent} disabled={isSubmitting || !systemPrompt.trim()} className="flex min-h-10 items-center gap-2 rounded-xl bg-emerald-950 px-5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-45">
+          {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 text-emerald-300" />}
+          {isSubmitting
+            ? (isEditMode ? 'Saving changes…' : 'Creating agent…')
+            : (isEditMode ? 'Save Changes' : 'Create agent')}
+        </button>
+      )}
+    </div>
+  );
 
-Q: What is your refund policy?
-A: Items can be returned within 30 days of delivery with receipt for a 100% full refund.`,
-    },
-    {
-      title: 'Format 2: Hierarchical Markdown with Clear Headings',
-      ext: '.md',
-      desc: 'Optimal for technical documentation, pricing tiers, and service specifications.',
-      sample: `# Enterprise Platform Tiers
-
-## Starter Plan
-- Price: $49/month
-- Inclusions: Up to 500 voice minutes, 2 agents, standard webhooks.
-
-## Enterprise Plan
-- Price: $499/month
-- Inclusions: 10,000 voice minutes, unlimited agents, dedicated SIP trunks, 99.99% SLA.
-
-## Cancellation & Downgrades
-- Customers may downgrade anytime with prorated credit applied to the next billing cycle.`,
-    },
-    {
-      title: 'Format 3: Standard Operating Procedure (SOP & Policy Rules)',
-      ext: '.md or .txt',
-      desc: 'Best for clinical intake, qualification checklists, and compliance escalations.',
-      sample: `# Inbound Call Intake Protocol
-
-## Mandatory Verification
-- Step 1: Collect caller full legal name.
-- Step 2: Confirm account ID or 10-digit phone number.
-
-## Escalation Triggers
-- If caller mentions "attorney", "legal dispute", or "regulatory complaint", immediately initiate warm transfer to tier-3 supervisor.
-- Never quote specific investment returns or guaranteed medical outcomes.`,
-    },
-  ];
-
-  const handleCopyExample = (text: string, idx: number) => {
-    navigator.clipboard.writeText(text);
-    setCopiedFormatIndex(idx);
-    setTimeout(() => setCopiedFormatIndex(null), 2000);
-  };
+  const labelClass = 'mb-1.5 block text-xs font-semibold text-slate-800';
+  const inputClass = 'min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/15';
+  const textareaClass = 'w-full resize-y rounded-xl border border-slate-200 bg-white p-3.5 text-sm leading-relaxed text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/15';
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Create Voice AI Agent"
-      subtitle="Define your agent's identity, goal, knowledge base RAG, and safety guardrails."
-      maxWidth="2xl"
+      title={isEditMode ? `Configure Agent: ${name || agent?.name || 'Voice Assistant'}` : 'Create your voice agent'}
+      subtitle={isEditMode ? 'Update identity, speech behaviors, integrations, and operational parameters.' : 'Shape the conversation, choose its voice and tools, then add trusted knowledge and guardrails.'}
+      maxWidth="4xl"
       theme="light"
+      scrollToTopKey={currentStep}
     >
-      <div className="space-y-6">
-        {/* ── 4-STEP BREADCRUMB STEPPER ── */}
-        <div className="grid grid-cols-4 gap-2 p-1.5 rounded-xl bg-slate-100 border border-slate-200 text-xs">
-          {[
-            { step: 1, label: '1. Identity & Goal', icon: Bot },
-            { step: 2, label: '2. Knowledge Base', icon: FileText },
-            { step: 3, label: '3. Guardrails', icon: Shield },
-            { step: 4, label: '4. Prompt & Review', icon: Sparkles },
-          ].map((s) => {
-            const Icon = s.icon;
-            const isActive = currentStep === s.step;
-            const isCompleted = currentStep > s.step;
-            return (
-              <button
-                key={s.step}
-                type="button"
-                onClick={() => setCurrentStep(s.step as any)}
-                className={`py-2 px-2.5 rounded-lg font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                  isActive
-                    ? 'bg-white text-emerald-950 shadow-xs border border-slate-200/80 font-bold'
-                    : isCompleted
-                    ? 'text-emerald-700 hover:bg-white/60'
-                    : 'text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-emerald-600' : isCompleted ? 'text-emerald-700' : 'text-slate-400'}`} />
-                <span className="truncate">{s.label}</span>
-              </button>
-            );
-          })}
+      <div className="space-y-5">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 sm:p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-800">Agent setup</p>
+              <h2 className="mt-1 text-sm font-semibold text-slate-950">{STEPS[currentStep - 1].label}</h2>
+            </div>
+            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-semibold text-slate-600">STEP {currentStep} OF {STEPS.length}</span>
+          </div>
+          <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-200" aria-hidden="true">
+            <div className="h-full rounded-full bg-emerald-600 transition-all duration-300" style={{ width: `${(currentStep / STEPS.length) * 100}%` }} />
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {STEPS.map((step) => {
+              const active = step.id === currentStep;
+              const complete = step.id < currentStep;
+              return (
+                <button key={step.id} type="button" onClick={() => step.id <= currentStep && setCurrentStep(step.id)} disabled={step.id > currentStep} aria-current={active ? 'step' : undefined} className={`flex min-h-9 items-center justify-center gap-2 rounded-xl px-2 text-[11px] font-semibold transition ${active ? 'border border-emerald-200 bg-white text-emerald-950 shadow-sm' : complete ? 'text-emerald-800 hover:bg-white' : 'cursor-not-allowed text-slate-400'}`}>
+                  <span className={`flex h-5 w-5 items-center justify-center rounded-md ${active ? 'bg-emerald-100' : complete ? 'bg-emerald-50' : 'bg-slate-100'}`}>{complete ? <Check className="h-3.5 w-3.5" /> : step.id}</span>
+                  <span className="truncate">{step.short}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {/* ══════════════════════════════════════════════════════════
-            STEP 1: IDENTITY, INTENTION (DESCRIPTION) & OPENER
-        ══════════════════════════════════════════════════════════ */}
         {currentStep === 1 && (
-          <div className="space-y-4 animate-fade-in">
-            {/* Agent Name & Role */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  Agent Display Name <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Maya, Liam, Support Assistant"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500/20"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  Professional Role / Title <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Customer Support Specialist, Senior SDR, Intake Coordinator"
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500/20"
-                />
-              </div>
-            </div>
-
-            {/* AGENT GOAL, INTENTION & DESCRIPTION (FULL NATURAL LANGUAGE FIELD - NO RESTRICTIVE OPTIONS) */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-emerald-600" />
-                  <label className="block text-xs font-bold text-slate-900 uppercase tracking-wider">
-                    Agent Description & Intention <span className="text-rose-500">*</span>
-                  </label>
+          <div className="space-y-4">
+            {/* Top configuration row: Agent Name */}
+            <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-800">
+                    <Bot className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <label htmlFor="agent-name" className="text-xs font-semibold text-slate-900">
+                      Agent Name
+                    </label>
+                    <p className="text-[11px] text-slate-500">Default name: Cathy · Fully customizable anytime.</p>
+                  </div>
                 </div>
-                <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-full flex items-center gap-1 border border-emerald-200">
-                  <Sparkles className="w-3 h-3 text-emerald-600" />
-                  <span>Backend LLM will build system prompt</span>
+                <div className="sm:w-72">
+                  <input
+                    id="agent-name"
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    placeholder="e.g. Cathy"
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+            </section>
+
+            {/* Call Direction with Greeting Configuration */}
+            <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <PhoneCall className="h-4 w-4 text-emerald-800" />
+                  <h3 className="text-xs font-semibold text-slate-900">Call Direction</h3>
+                </div>
+                <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-semibold text-slate-600">
+                  {callDirection === 'inbound'
+                    ? 'Inbound only'
+                    : callDirection === 'outbound'
+                    ? 'Outbound only'
+                    : 'Inbound + Outbound'}
                 </span>
               </div>
-
-              <div className="p-3 rounded-xl bg-emerald-50/60 border border-emerald-200/70 text-[11px] text-slate-600 space-y-1">
-                <p className="font-bold text-emerald-950 flex items-center gap-1.5">
-                  <span>Write everything in this description</span>
-                </p>
-                <p className="leading-relaxed text-slate-600">
-                  Tell us everything you want this voice agent to do in your own words—its core intention (e.g. sales pitching, customer support, lead qualification, interactive Q&A, or booking appointments), speaking style, what information it should collect, and how it should handle objections. There are no rigid options or templates: our backend LLM will synthesize your complete description into a production-ready voice system prompt.
-                </p>
+              <div className="grid grid-cols-3 gap-2" role="group" aria-label="Call direction">
+                {[
+                  { id: 'inbound', label: 'Inbound', desc: 'Customer calls you', icon: PhoneIncoming },
+                  { id: 'outbound', label: 'Outbound', desc: 'Agent calls contact', icon: PhoneOutgoing },
+                  { id: 'both', label: 'Both', desc: 'Inbound & outbound', icon: PhoneCall },
+                ].map((option) => {
+                  const Icon = option.icon;
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      aria-pressed={callDirection === option.id}
+                      onClick={() => handleCallDirectionChange(option.id as typeof callDirection)}
+                      className={`min-h-12 rounded-xl border p-2.5 text-center transition ${
+                        callDirection === option.id
+                          ? 'border-emerald-300 bg-emerald-50/70 font-semibold text-emerald-950 ring-1 ring-emerald-200 shadow-sm'
+                          : 'border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-center gap-1.5">
+                        <Icon className={`h-3.5 w-3.5 ${callDirection === option.id ? 'text-emerald-800' : 'text-slate-400'}`} />
+                        <span className="block text-xs font-semibold">{option.label}</span>
+                      </div>
+                      <span className="mt-0.5 block text-[10px] text-slate-500 font-normal">{option.desc}</span>
+                    </button>
+                  );
+                })}
               </div>
-
-              <textarea
-                rows={5}
-                required
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Write everything here in your own words...
-Example: This agent is built for inbound customer support. Its primary intention is to warmly greet customers, ask for their order ID, look up return policies in the attached knowledge base, and answer shipping or refund questions. If the customer is frustrated or asks for a refund over $200, de-escalate with empathy before offering supervisor transfer."
-                className="w-full p-3 text-xs leading-relaxed rounded-xl border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500/20"
-              />
-              <div className="flex items-center justify-between text-[11px] text-slate-400">
-                <span>Provide as much detail as you like for the backend prompt generator.</span>
-                <span className="font-mono text-slate-500 font-medium">{description.length} characters</span>
-              </div>
-            </div>
-
-            {/* STARTING SENTENCE (FIRST SPOKEN GREETING) */}
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/90 space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <PhoneCall className="w-4 h-4 text-emerald-600" />
-                  <label className="text-xs font-bold text-slate-900">
-                    Starting Sentence (First Spoken Greeting) <span className="text-rose-500">*</span>
-                  </label>
-                </div>
-                <span className="text-[11px] text-slate-500 font-mono">Immediate Opener</span>
-              </div>
-              <p className="text-[11px] text-slate-500">
-                The exact words your voice agent will speak the moment the caller answers the phone.
+              <p className="mt-2 text-[11px] text-slate-500">
+                {callDirection === 'inbound'
+                  ? 'Handles incoming calls from customers when they dial your assigned phone number.'
+                  : callDirection === 'outbound'
+                  ? 'Places proactive outbound calls to contacts, leads, or existing customers.'
+                  : 'Handles both incoming inquiries and places proactive outbound campaign calls.'}
               </p>
-              <textarea
-                rows={2}
-                required
-                value={startingSentence}
-                onChange={(e) => setStartingSentence(e.target.value)}
-                placeholder="e.g. Hello! Thank you for calling Samvada Support. My name is Maya. How can I assist you today?"
-                className="w-full p-2.5 text-xs rounded-lg border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-emerald-600"
-              />
-            </div>
 
-            {/* Voice & LLM Model Choice */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Voice Model</label>
-                <select
-                  value={selectedVoice}
-                  onChange={(e) => setSelectedVoice(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white text-slate-900 focus:outline-none focus:border-emerald-600"
-                >
-                  {AVAILABLE_VOICES.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.name} ({v.accent || v.language})
-                    </option>
-                  ))}
-                </select>
+              {/* Greeting prompt dynamically asked when clicking inbound, outbound, or both */}
+              <div className="mt-4 border-t border-slate-100 pt-3.5">
+                {callDirection === 'inbound' && (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label htmlFor="agent-inbound-greeting-step1" className="text-xs font-semibold text-slate-900 flex items-center gap-1.5">
+                        <span>Inbound Greeting</span>
+                        <span className="rounded-md bg-emerald-100/70 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">When caller dials in</span>
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setInboundGreeting(populateOrgName(DEFAULT_INBOUND_GREETING, orgName))}
+                          className="text-[11px] font-medium text-emerald-800 hover:text-emerald-950 hover:underline"
+                        >
+                          Reset to default
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-slate-500">
+                      What should the agent say immediately when an inbound caller connects? ({greetingMode === 'static' ? 'exact wording' : 'dynamically tailored'})
+                    </p>
+                    <textarea
+                      id="agent-inbound-greeting-step1"
+                      rows={3}
+                      value={inboundGreeting}
+                      onChange={(event) => setInboundGreeting(event.target.value)}
+                      placeholder={`e.g. Hello, thanks for calling ${orgName}. My name is Cathy, how can I assist you today?`}
+                      className={textareaClass}
+                    />
+                  </div>
+                )}
+
+                {callDirection === 'outbound' && (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label htmlFor="agent-outbound-greeting-step1" className="text-xs font-semibold text-slate-900 flex items-center gap-1.5">
+                        <span>Outbound Greeting</span>
+                        <span className="rounded-md bg-sky-100/70 px-1.5 py-0.5 text-[10px] font-semibold text-sky-800">When contact picks up</span>
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setOutboundGreeting(populateOrgName(DEFAULT_OUTBOUND_GREETING, orgName))}
+                          className="text-[11px] font-medium text-sky-800 hover:text-sky-950 hover:underline"
+                        >
+                          Reset to default
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-slate-500">
+                      What should the agent say immediately when the contact answers an outbound call? ({greetingMode === 'static' ? 'exact wording' : 'dynamically tailored'})
+                    </p>
+                    <textarea
+                      id="agent-outbound-greeting-step1"
+                      rows={3}
+                      value={outboundGreeting}
+                      onChange={(event) => setOutboundGreeting(event.target.value)}
+                      placeholder={`e.g. Hi, this is Cathy calling from ${orgName}. Am I speaking with [Contact Name]?`}
+                      className={textareaClass}
+                    />
+                  </div>
+                )}
+
+                {callDirection === 'both' && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-xs font-semibold text-slate-900">Configure Greetings for Both Directions</h4>
+                        <p className="text-[11px] text-slate-500">Set distinct opening lines for inbound inquiries and outbound calls.</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setInboundGreeting(populateOrgName(DEFAULT_INBOUND_GREETING, orgName));
+                            setOutboundGreeting(populateOrgName(DEFAULT_OUTBOUND_GREETING, orgName));
+                          }}
+                          className="text-[11px] font-medium text-emerald-800 hover:text-emerald-950 hover:underline"
+                        >
+                          Reset both
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-3 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <label htmlFor="agent-both-inbound-greeting-step1" className="text-xs font-semibold text-emerald-950 flex items-center gap-1">
+                            <PhoneIncoming className="h-3.5 w-3.5 text-emerald-700" />
+                            <span>1. Inbound Greeting</span>
+                          </label>
+                          <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-800 uppercase tracking-wide">
+                            Incoming
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-500">When customers call your agent</p>
+                        <textarea
+                          id="agent-both-inbound-greeting-step1"
+                          rows={3}
+                          value={inboundGreeting}
+                          onChange={(event) => setInboundGreeting(event.target.value)}
+                          placeholder="Inbound greeting text..."
+                          className={textareaClass}
+                        />
+                      </div>
+
+                      <div className="rounded-xl border border-sky-100 bg-sky-50/40 p-3 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <label htmlFor="agent-both-outbound-greeting-step1" className="text-xs font-semibold text-sky-950 flex items-center gap-1">
+                            <PhoneOutgoing className="h-3.5 w-3.5 text-sky-700" />
+                            <span>2. Outbound Greeting</span>
+                          </label>
+                          <span className="rounded bg-sky-100 px-1.5 py-0.5 text-[9px] font-semibold text-sky-800 uppercase tracking-wide">
+                            Outgoing
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-500">When contacts pick up outbound calls</p>
+                        <textarea
+                          id="agent-both-outbound-greeting-step1"
+                          rows={3}
+                          value={outboundGreeting}
+                          onChange={(event) => setOutboundGreeting(event.target.value)}
+                          placeholder="Outbound greeting text..."
+                          className={textareaClass}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </section>
+
+            {/* Core Blueprint: Agent Instructions & Conversational Prompt Text Area */}
+            <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+              <div className="mb-3.5 flex flex-wrap items-start justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-800">
+                    <FileText className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-950">
+                      Agent Instructions
+                    </h3>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      Starter blueprint personalized for <span className="font-semibold text-slate-700">{orgName}</span>. Customize instructions freely.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(systemPrompt);
+                      toast.success('Blueprint copied', 'Prompt text copied to clipboard.');
+                    }}
+                    className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-600 transition hover:bg-slate-50"
+                    title="Copy blueprint text"
+                  >
+                    <Copy className="h-3 w-3 text-slate-400" />
+                    <span>Copy</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSystemPrompt(populateOrgName(DEFAULT_VOICE_PROMPT_TEMPLATE, orgName));
+                      toast.info('Template restored', `Reset to starter blueprint for ${orgName}.`);
+                    }}
+                    className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50/70 px-2.5 text-[11px] font-semibold text-emerald-900 transition hover:bg-emerald-100"
+                    title="Restore default blueprint template"
+                  >
+                    <RotateCcw className="h-3 w-3 text-emerald-700" />
+                    <span>Reset template</span>
+                  </button>
+                </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">LLM Intelligence Engine</label>
-                <select
-                  value={selectedModel}
-                  onChange={(e) => setSelectedModel(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white text-slate-900 focus:outline-none focus:border-emerald-600"
-                >
-                  {AVAILABLE_MODELS.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name}
-                    </option>
-                  ))}
-                </select>
+                <div className="mb-2 flex items-center justify-between text-[11px] font-medium text-slate-600">
+                  <label htmlFor="agent-system-prompt" className="font-semibold text-slate-800">
+                    Instructions <span className="text-emerald-700 font-normal">· edit freely</span>
+                  </label>
+                  <span className="font-mono text-slate-400 font-normal">
+                    {systemPrompt.length} chars · {systemPrompt.split(/\s+/).filter(Boolean).length} words
+                  </span>
+                </div>
+                <textarea
+                  id="agent-system-prompt"
+                  rows={15}
+                  value={systemPrompt}
+                  onChange={(event) => setSystemPrompt(event.target.value)}
+                  placeholder="Describe who your agent is, what it does on a call, how it should speak, and what it should never do..."
+                  className="w-full resize-y rounded-xl border border-slate-200 bg-slate-50/50 p-4 text-sm leading-relaxed text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-600 focus:bg-white focus:ring-2 focus:ring-emerald-500/15"
+                />
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500">
+                  <p>
+                    Personalized for <span className="font-semibold text-slate-700">{orgName}</span> — edit instructions, call flow, or guardrails freely.
+                  </p>
+                  <span className="inline-flex items-center gap-1 text-emerald-700 font-medium">
+                    <CheckCircle2 className="h-3.5 w-3.5" /> Fully editable
+                  </span>
+                </div>
               </div>
-            </div>
+            </section>
 
-            <div className="flex justify-end pt-2">
-              <button
-                type="button"
-                onClick={() => setCurrentStep(2)}
-                disabled={!name.trim() || !role.trim() || !description.trim() || !startingSentence.trim()}
-                className="px-5 py-2.5 rounded-xl bg-emerald-950 hover:bg-emerald-900 text-white text-xs font-semibold shadow-xs flex items-center gap-2 cursor-pointer transition-all disabled:opacity-50"
-              >
-                <span>Continue to Knowledge Base</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
+            {renderFooter(undefined, 2)}
           </div>
         )}
 
-        {/* ══════════════════════════════════════════════════════════
-            STEP 2: KNOWLEDGE BASE & STRUCTURED FILE GUIDANCE
-        ══════════════════════════════════════════════════════════ */}
         {currentStep === 2 && (
-          <div className="space-y-5 animate-fade-in">
-            {/* Structured File Explanation Banner */}
-            <div className="p-4 rounded-xl bg-emerald-50/70 border border-emerald-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-800 shrink-0 mt-0.5">
-                  <FileCode className="w-4 h-4 text-emerald-700" />
+          <div className="space-y-4">
+            <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+              <div className="mb-4 flex items-start gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-800"><Mic className="h-5 w-5" /></span>
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-950">Make the first seconds feel right</h3>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-500">Choose a voice and calibrate speech delivery. The agent greets callers immediately when the line connects.</p>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <SelectField label="Primary language" value={primaryLanguage} options={LANGUAGES.map((language) => ({ id: language.id, name: language.name, note: language.id === primaryLanguage ? 'Used as the default language for the call.' : '' }))} onChange={setPrimaryLanguage} icon={<Globe className="h-4 w-4" />} />
+                  <div className="mt-3">
+                    <p className={labelClass}>Also support <span className="font-normal text-slate-400">· optional</span></p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {LANGUAGES.filter((language) => language.id !== primaryLanguage).map((language) => {
+                        const selected = additionalLanguages.includes(language.id);
+                        return <button key={language.id} type="button" aria-pressed={selected} onClick={() => toggleLanguage(language.id)} className={`rounded-full border px-2.5 py-1.5 text-[11px] font-medium transition ${selected ? 'border-emerald-300 bg-emerald-50 text-emerald-900' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>{selected && <Check className="mr-1 inline h-3 w-3" />}{language.name}</button>;
+                      })}
+                    </div>
+                  </div>
                 </div>
                 <div>
-                  <h4 className="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
-                    <span>Structured Documents Yield 10x Better Voice Performance</span>
-                    <span className="text-[10px] font-bold px-1.5 py-0.2 bg-emerald-200/80 text-emerald-900 rounded">
-                      High Retrieval Speed
-                    </span>
-                  </h4>
-                  <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
-                    Voice AI requires sub-200ms vector lookups. Clear Markdown headings, Q&A pairs, and bulleted rules guarantee instant facts with zero hallucinations.
+                  <SelectField label="Voice" value={selectedVoice?.id || ''} options={voicesForProvider.map((voice) => ({ id: voice.id, name: `${voice.name} · ${voice.accent || voice.language}`, note: `${voice.gender === 'female' ? 'Feminine' : voice.gender === 'male' ? 'Masculine' : 'Neutral'} voice · ${voice.language}` }))} onChange={setVoiceId} icon={<AudioLines className="h-4 w-4" />} />
+                  <a href="/voices" target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-800 hover:text-emerald-950">Explore the voice library <ExternalLink className="h-3 w-3" /></a>
+                </div>
+              </div>
+
+              <div className="mt-5 border-t border-slate-100 pt-4">
+                <div>
+                  <label className="flex items-center justify-between gap-3 text-xs font-medium text-slate-700">
+                    <span className={labelClass}>Speaking speed</span>
+                    <span className="font-mono text-slate-500 text-xs">{speakingRate.toFixed(2)}x</span>
+                  </label>
+                  <input
+                    type="range"
+                    min="0.8"
+                    max="1.3"
+                    step="0.05"
+                    value={speakingRate}
+                    onChange={(event) => setSpeakingRate(Number(event.target.value))}
+                    aria-label="Speaking speed"
+                    className="mt-2.5 w-full accent-emerald-700"
+                  />
+                  <p className="mt-1.5 text-[11px] text-slate-500">
+                    Controls vocal delivery speed. Normal conversational pacing is 1.00x.
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowFormatGuide(!showFormatGuide)}
-                className="px-3 py-1.5 bg-white hover:bg-slate-50 border border-emerald-300 text-emerald-950 rounded-lg text-xs font-bold shrink-0 shadow-2xs cursor-pointer transition-colors"
-              >
-                {showFormatGuide ? 'Hide Format Guide' : 'View Best Format Examples'}
-              </button>
-            </div>
 
-            {/* Interactive Format Guide Accordion */}
-            {showFormatGuide && (
-              <div className="p-4 rounded-xl bg-slate-900 text-white space-y-4 shadow-md border border-slate-800 animate-fade-in">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-emerald-400" />
-                    <span className="text-xs font-bold text-white">Recommended File Formats for Real-time Voice</span>
+
+            </section>
+            {renderFooter(1, 3)}
+          </div>
+        )}
+
+        {currentStep === 3 && (
+          <div className="space-y-4">
+            <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+              <div className="mb-4 flex items-start gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-800"><AudioLines className="h-5 w-5" /></span>
+                <div><h3 className="text-sm font-semibold text-slate-950">Choose the voice stack</h3><p className="mt-1 text-xs leading-relaxed text-slate-500">Start with recommended providers or choose the services connected to your workspace.</p></div>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <SelectField label="Telephony & call network" value={telephonyProvider} options={TELEPHONY_OPTIONS} onChange={setTelephonyProvider} icon={<PhoneCall className="h-4 w-4" />} />
+                <SelectField label="Speech recognition · STT" value={sttProvider} options={sttOptions} onChange={setSttProvider} icon={<Mic className="h-4 w-4" />} />
+                <SelectField label="Conversation model · LLM" value={model} options={llmOptions} onChange={setModel} icon={<Bot className="h-4 w-4" />} />
+                <SelectField label="Voice synthesis · TTS" value={ttsProvider} options={ttsOptions} onChange={handleTtsProviderChange} icon={<AudioLines className="h-4 w-4" />} />
+              </div>
+              <label className="mt-4 block"><span className={labelClass}>Words the speech recognizer should know <span className="font-normal text-slate-400">· optional</span></span><textarea rows={2} value={sttKeyterms} onChange={(event) => setSttKeyterms(event.target.value)} placeholder="Brand names, product names, local terms, or acronyms" className={textareaClass} /><span className="mt-1 block text-[11px] text-slate-500">Used as transcription hints where the selected speech provider supports them. Separate terms with commas.</span></label>
+            </section>
+
+            <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-50 text-sky-800">
+                    <FolderOpen className="h-4.5 w-4.5" />
+                  </span>
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-950">Choose trusted knowledge</h3>
+                    <p className="mt-1 text-xs text-slate-500">Connect verified knowledge base folders to ground your agent's responses in approved documentation.</p>
                   </div>
-                  <span className="text-[11px] text-slate-400">Click copy to use as your starter template</span>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  {formatExamples.map((ex, idx) => (
-                    <div key={idx} className="p-3 rounded-lg bg-slate-950 border border-slate-800 flex flex-col justify-between space-y-2">
-                      <div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-bold text-emerald-400">{ex.title.split('(')[0]}</span>
-                          <span className="text-[10px] font-mono text-slate-400 bg-slate-800 px-1 rounded">{ex.ext}</span>
-                        </div>
-                        <p className="text-[10px] text-slate-400 mt-1 leading-snug">{ex.desc}</p>
-                        <pre className="text-[10px] font-mono bg-slate-900 p-2 rounded mt-2 text-slate-300 overflow-x-auto max-h-36 whitespace-pre-wrap">
-                          {ex.sample}
-                        </pre>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleCopyExample(ex.sample, idx)}
-                        className="w-full py-1 bg-slate-800 hover:bg-slate-700 text-white rounded text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                      >
-                        {copiedFormatIndex === idx ? (
-                          <>
-                            <Check className="w-3 h-3 text-emerald-400" />
-                            <span>Copied to Clipboard!</span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3 h-3 text-slate-300" />
-                            <span>Copy Template</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Direct Upload Dropzone */}
-            <div className="p-5 rounded-xl border-2 border-dashed border-slate-300 hover:border-emerald-500 bg-slate-50/50 transition-all text-center">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".txt,.md,.pdf,.docx,.json,.csv"
-                onChange={handleFileUpload}
-                className="hidden"
-                id="kb-file-upload-input"
-              />
-              <label htmlFor="kb-file-upload-input" className="cursor-pointer block">
-                <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center mx-auto mb-2">
-                  {isUploadingDoc ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
-                </div>
-                <p className="text-xs font-bold text-slate-900">
-                  {isUploadingDoc ? 'Uploading & Processing Document in Backend...' : 'Upload Document Directly to Knowledge Base'}
-                </p>
-                <p className="text-[11px] text-slate-500 mt-1">
-                  Supports Markdown (.md), Plain Text (.txt), PDF, Word (.docx), JSON, or CSV (up to 25MB)
-                </p>
-                <span className="inline-block mt-2.5 px-3 py-1 bg-white border border-slate-200 text-emerald-950 font-bold text-xs rounded-lg shadow-2xs hover:bg-slate-100 transition-colors">
-                  Browse Files
-                </span>
-              </label>
-            </div>
-
-            {/* Existing Documents Selector */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                  Select Knowledge Documents for This Agent ({selectedDocIds.length} attached)
-                </label>
-                {knowledgeBases.length > 1 && (
-                  <select
-                    value={selectedKbId}
-                    onChange={(e) => handleSelectKb(e.target.value)}
-                    className="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white text-slate-700 font-medium"
-                  >
-                    {knowledgeBases.map((kb) => (
-                      <option key={kb.id} value={kb.id}>
-                        KB: {kb.name}
-                      </option>
-                    ))}
-                  </select>
-                )}
+                <a href="/knowledge" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-50">Manage folders <ExternalLink className="h-3 w-3" /></a>
               </div>
 
-              {isLoadingKbs ? (
-                <div className="p-6 text-center text-slate-400">
-                  <Loader2 className="w-5 h-5 animate-spin mx-auto mb-1 text-emerald-600" />
-                  <p className="text-xs">Loading workspace knowledge documents...</p>
+              <div className="relative mt-4">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input value={knowledgeSearch} onChange={(event) => setKnowledgeSearch(event.target.value)} aria-label="Search knowledge folders" placeholder="Search knowledge folders by name or description..." className={`${inputClass} pl-9`} />
+              </div>
+
+              {isLoadingResources ? (
+                <div className="py-10 text-center" role="status"><Loader2 className="mx-auto h-5 w-5 animate-spin text-emerald-700" /><p className="mt-2 text-xs text-slate-500">Loading your knowledge folders…</p></div>
+              ) : resourceLoadError ? (
+                <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-800">Could not load knowledge folders. You can continue and select knowledge later.</div>
+              ) : knowledgeBases.length === 0 ? (
+                <div className="mt-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
+                  <FolderOpen className="mx-auto h-6 w-6 text-slate-400" />
+                  <p className="mt-2 text-xs font-semibold text-slate-800">No knowledge folders yet</p>
+                  <p className="mt-1 text-[11px] text-slate-500">Create folders and upload reference files in Knowledge Base to attach them here.</p>
                 </div>
-              ) : kbDocs.length === 0 ? (
-                <div className="p-6 text-center rounded-xl bg-slate-50 border border-slate-200 text-slate-500 space-y-1">
-                  <FolderOpen className="w-6 h-6 mx-auto text-slate-400 mb-1" />
-                  <p className="text-xs font-semibold text-slate-700">No documents found in knowledge base</p>
-                  <p className="text-[11px] text-slate-400">
-                    Upload a file above, or continue without attaching documents (you can connect documents later).
-                  </p>
-                </div>
+              ) : filteredKnowledgeBases.length === 0 ? (
+                <div className="mt-3 rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-6 text-center text-xs text-slate-500">No knowledge folders match “{knowledgeSearch}”.</div>
               ) : (
-                <div className="max-h-48 overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded-xl bg-white shadow-2xs">
-                  {kbDocs.map((doc) => {
-                    const isSelected = selectedDocIds.includes(doc.id);
+                <div className="mt-3 max-h-64 space-y-2 overflow-y-auto pr-1">
+                  {filteredKnowledgeBases.map((base) => {
+                    const isSelected = selectedKbIds.includes(base.id);
                     return (
-                      <div
-                        key={doc.id}
-                        onClick={() => toggleDocSelection(doc.id)}
-                        className={`p-3 flex items-center justify-between transition-colors cursor-pointer ${
-                          isSelected ? 'bg-emerald-50/70 border-l-4 border-l-emerald-600' : 'hover:bg-slate-50'
+                      <label
+                        key={base.id}
+                        className={`group flex cursor-pointer items-center justify-between gap-3.5 rounded-xl border p-3.5 transition-all ${
+                          isSelected
+                            ? 'border-emerald-300 bg-emerald-50/60 shadow-sm'
+                            : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/80'
                         }`}
                       >
-                        <div className="flex items-center gap-3">
+                        <div className="flex min-w-0 items-center gap-3">
                           <input
                             type="checkbox"
                             checked={isSelected}
-                            onChange={() => toggleDocSelection(doc.id)}
-                            className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                            onChange={() => toggleKnowledgeBase(base.id)}
+                            className="h-4 w-4 rounded border-slate-300 text-emerald-700 focus:ring-emerald-600"
                           />
-                          <div>
-                            <p className="text-xs font-bold text-slate-900 flex items-center gap-2">
-                              <span>{doc.name}</span>
-                              <span className="text-[10px] font-mono px-1.5 py-0.2 bg-slate-100 text-slate-600 rounded">
-                                {doc.type || 'doc'}
-                              </span>
-                            </p>
-                            <p className="text-[10px] text-slate-400 mt-0.5">
-                              Status: <span className="text-emerald-700 font-semibold">{doc.status || 'Indexed'}</span> • {doc.chunkCount || 1} Chunks
+                          <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition ${
+                            isSelected ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600 group-hover:bg-sky-50 group-hover:text-sky-700'
+                          }`}>
+                            <Folder className="h-4.5 w-4.5" />
+                          </span>
+                          <div className="min-w-0">
+                            <p className="truncate text-xs font-semibold text-slate-900">{base.name}</p>
+                            <p className="mt-0.5 truncate text-[11px] text-slate-500">
+                              {base.description || `${base.documentCount} ${base.documentCount === 1 ? 'file' : 'files'} · ${base.chunkCount || 0} indexed chunks`}
                             </p>
                           </div>
                         </div>
-                        <span className={`text-[11px] font-bold ${isSelected ? 'text-emerald-800' : 'text-slate-400'}`}>
-                          {isSelected ? 'Attached' : 'Click to attach'}
-                        </span>
-                      </div>
+
+                        <div className="flex shrink-0 items-center gap-2.5">
+                          {base.description && (
+                            <span className="hidden text-[11px] font-medium text-slate-500 sm:inline-block">
+                              {base.documentCount} {base.documentCount === 1 ? 'file' : 'files'}
+                            </span>
+                          )}
+                          <span
+                            className={`rounded-full px-2.5 py-1 text-[10px] font-semibold transition ${
+                              isSelected
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : 'bg-slate-100 text-slate-600 group-hover:bg-slate-200'
+                            }`}
+                          >
+                            {isSelected ? 'Selected' : 'Select'}
+                          </span>
+                        </div>
+                      </label>
                     );
                   })}
                 </div>
               )}
-            </div>
+              <div className="mt-3 flex items-center justify-between rounded-lg bg-emerald-50/70 px-3.5 py-2.5 text-xs"><span className="font-medium text-emerald-950">{selectedKbIds.length ? `${selectedKbIds.length} folder${selectedKbIds.length === 1 ? '' : 's'} selected` : 'Knowledge is optional for this draft'}</span><span className="text-[11px] text-emerald-800">Answers stay grounded in approved sources</span></div>
+            </section>
 
-            <div className="flex items-center justify-between pt-2">
-              <button
-                type="button"
-                onClick={() => setCurrentStep(1)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 flex items-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Back</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setCurrentStep(3)}
-                className="px-5 py-2.5 rounded-xl bg-emerald-950 hover:bg-emerald-900 text-white text-xs font-semibold shadow-xs flex items-center gap-2 cursor-pointer transition-all"
-              >
-                <span>Continue to Guardrails</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
+            <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+              <div className="mb-3 flex items-start justify-between gap-3"><div><h3 className="text-sm font-semibold text-slate-950">Allow connected actions</h3><p className="mt-1 text-xs text-slate-500">Only the tools you select will be available to this agent.</p></div><span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-600">Optional</span></div>
+              {readyIntegrations.length ? <div className="grid gap-2 sm:grid-cols-2">{readyIntegrations.map((integration) => { const selected = selectedTools.includes(integration.id); return <label key={integration.id} className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition ${selected ? 'border-emerald-300 bg-emerald-50/60' : 'border-slate-200 hover:bg-slate-50'}`}><input type="checkbox" checked={selected} onChange={() => toggleTool(integration.id)} className="mt-0.5 h-4 w-4 rounded border-slate-300 text-emerald-700 focus:ring-emerald-600" /><span className="min-w-0"><span className="block text-xs font-semibold text-slate-800">{integration.name}</span><span className="mt-0.5 block text-[10px] leading-relaxed text-slate-500">{integration.description}</span></span></label>; })}</div> : <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-center"><p className="text-xs font-medium text-slate-700">No connected actions found</p><a href="/integrations" target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800">Connect an integration <ExternalLink className="h-3 w-3" /></a></div>}
+            </section>
+            {renderFooter(2, 4)}
           </div>
         )}
 
-        {/* ══════════════════════════════════════════════════════════
-            STEP 3: GUARDRAILS & SAFETY POLICIES
-        ══════════════════════════════════════════════════════════ */}
-        {currentStep === 3 && (
-          <div className="space-y-5 animate-fade-in">
-            {/* Quick Presets */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider">
-                  Quick Safety Presets
-                </label>
-                <span className="text-[11px] text-slate-500 font-medium">1-Click enterprise compliance profiles</span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                {[
-                  {
-                    title: 'Enterprise Standard',
-                    desc: 'Strict PII masking, grounded RAG, competitor blocking, supervisor transfer.',
-                    pii: true,
-                    hallucination: true,
-                    disclaimer: false,
-                  },
-                  {
-                    title: 'Financial & Banking',
-                    desc: 'Full PCI-DSS compliance, mandatory recording disclaimer, zero credit card retention.',
-                    pii: true,
-                    hallucination: true,
-                    disclaimer: true,
-                  },
-                  {
-                    title: 'Healthcare Strict',
-                    desc: 'HIPAA containment, clinical disclaimers, immediate emergency transfer.',
-                    pii: true,
-                    hallucination: true,
-                    disclaimer: true,
-                  },
-                ].map((preset, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => {
-                      setEnablePiiMasking(preset.pii);
-                      setEnableHallucinationLock(preset.hallucination);
-                      setEnableDisclaimer(preset.disclaimer);
-                      toast.info('Preset Applied', `Configured ${preset.title} guardrails.`);
-                    }}
-                    className="p-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-left transition-all cursor-pointer shadow-2xs"
-                  >
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-950">
-                      <Shield className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>{preset.title}</span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 mt-1 leading-snug">{preset.desc}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Core Toggles */}
-            <div className="space-y-3">
-              {/* PII Masking Toggle */}
-              <div className="p-3.5 rounded-xl border border-slate-200 bg-white flex items-center justify-between gap-3 shadow-2xs">
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700 shrink-0 mt-0.5">
-                    <Lock className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold text-slate-900 block">
-                      PII & Sensitive Data Redaction
-                    </span>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
-                      Prevents collecting or repeating credit cards, CVVs, passwords, SSNs, or sensitive auth tokens during spoken calls.
-                    </p>
-                  </div>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={enablePiiMasking}
-                  onChange={(e) => setEnablePiiMasking(e.target.checked)}
-                  className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
-                />
-              </div>
-
-              {/* Hallucination Lock Toggle */}
-              <div className="p-3.5 rounded-xl border border-slate-200 bg-white flex items-center justify-between gap-3 shadow-2xs">
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700 shrink-0 mt-0.5">
-                    <CheckCircle2 className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold text-slate-900 block">
-                      Hallucination Lock (Strict Fact Grounding)
-                    </span>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
-                      Forces the agent to politely state it does not know if facts are not explicitly confirmed in your attached knowledge base.
-                    </p>
-                  </div>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={enableHallucinationLock}
-                  onChange={(e) => setEnableHallucinationLock(e.target.checked)}
-                  className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
-                />
-              </div>
-            </div>
-
-            {/* Prohibited Topics */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Restricted Topics & Competitor Blacklist
-              </label>
-              <input
-                type="text"
-                value={prohibitedTopics}
-                onChange={(e) => setProhibitedTopics(e.target.value)}
-                placeholder="e.g. Competitor X, politics, personal medical advice"
-                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white text-slate-900 focus:outline-none focus:border-emerald-600"
-              />
-              <p className="text-[10px] text-slate-400 mt-1">
-                Agent will deflect any user inquiry matching these subjects back to approved topics.
-              </p>
-            </div>
-
-            {/* Human Escalation Keywords */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Emergency & Human Escalation Triggers
-              </label>
-              <input
-                type="text"
-                value={escalationKeywords}
-                onChange={(e) => setEscalationKeywords(e.target.value)}
-                placeholder="e.g. speak to manager, representative, cancel service, lawyer"
-                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white text-slate-900 focus:outline-none focus:border-emerald-600"
-              />
-              <p className="text-[10px] text-slate-400 mt-1">
-                Keywords that trigger instant escalation or SIP warm transfer to human supervisors.
-              </p>
-            </div>
-
-            {/* Legal Disclaimer Toggle */}
-            <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-900">Mandatory Call Recording Notice</span>
-                <input
-                  type="checkbox"
-                  checked={enableDisclaimer}
-                  onChange={(e) => setEnableDisclaimer(e.target.checked)}
-                  className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
-                />
-              </div>
-              {enableDisclaimer && (
-                <input
-                  type="text"
-                  value={mandatoryDisclaimer}
-                  onChange={(e) => setMandatoryDisclaimer(e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white text-slate-900 focus:outline-none focus:border-emerald-600"
-                />
-              )}
-            </div>
-
-            <div className="flex items-center justify-between pt-2">
-              <button
-                type="button"
-                onClick={() => setCurrentStep(2)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 flex items-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Back</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setCurrentStep(4)}
-                className="px-5 py-2.5 rounded-xl bg-emerald-950 hover:bg-emerald-900 text-white text-xs font-semibold shadow-xs flex items-center gap-2 cursor-pointer transition-all"
-              >
-                <span>Review & Launch</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ══════════════════════════════════════════════════════════
-            STEP 4: SYSTEM PROMPT REVIEW & FINAL LAUNCH
-        ══════════════════════════════════════════════════════════ */}
         {currentStep === 4 && (
-          <div className="space-y-4 animate-fade-in">
-            {/* Summary Highlights */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-                <span className="text-[10px] text-slate-500 font-semibold block uppercase">Name & Role</span>
-                <p className="text-xs font-bold text-slate-900 truncate mt-0.5">{name}</p>
-                <p className="text-[11px] text-slate-500 truncate">{role}</p>
-              </div>
-
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-                <span className="text-[10px] text-slate-500 font-semibold block uppercase">Goal Context</span>
-                <p className="text-xs font-bold text-emerald-950 truncate mt-0.5" title={description}>
-                  {description.slice(0, 24)}...
-                </p>
-                <p className="text-[11px] text-emerald-700 font-semibold">User Defined</p>
-              </div>
-
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-                <span className="text-[10px] text-slate-500 font-semibold block uppercase">Voice & Model</span>
-                <p className="text-xs font-bold text-slate-900 truncate mt-0.5">
-                  {AVAILABLE_VOICES.find((v) => v.id === selectedVoice)?.name}
-                </p>
-                <p className="text-[11px] text-slate-500 font-mono truncate">{selectedModel}</p>
-              </div>
-
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-                <span className="text-[10px] text-slate-500 font-semibold block uppercase">Knowledge & Safety</span>
-                <p className="text-xs font-bold text-slate-900 truncate mt-0.5">
-                  {selectedDocIds.length} Docs Attached
-                </p>
-                <p className="text-[11px] text-emerald-700 font-semibold">
-                  {enablePiiMasking ? '🛡️ PII Guarded' : 'Standard'}
-                </p>
-              </div>
-            </div>
-
-            {/* Starting Opener Quick Card */}
-            <div className="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200 flex items-start gap-3">
-              <PhoneCall className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-              <div>
-                <span className="text-[10px] uppercase font-mono font-bold text-emerald-900 block">
-                  Opening Spoken Greeting
+          <div className="space-y-4">
+            {/* Live Call Escalation & Human Handoff */}
+            <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+              <div className="mb-4 flex items-start gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-800">
+                  <PhoneForwarded className="h-5 w-5" />
                 </span>
-                <p className="text-xs text-emerald-950 font-medium italic mt-0.5">
-                  "{startingSentence}"
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-semibold text-slate-950">Call escalation & human handoff</h3>
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                      escalationPhoneNumber.trim() ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'
+                    }`}>
+                      {escalationPhoneNumber.trim() ? 'Configured' : 'Optional'}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Provide a phone number to redirect live calls whenever a caller requests a human representative or requires live agent support.
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="escalation-phone" className={labelClass}>
+                  Escalation phone number <span className="font-normal text-slate-400">· optional redirect target</span>
+                </label>
+                <div className="relative">
+                  <PhoneForwarded className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    id="escalation-phone"
+                    type="tel"
+                    value={escalationPhoneNumber}
+                    onChange={(event) => setEscalationPhoneNumber(event.target.value)}
+                    placeholder="+1 (555) 012-3456 or +91 98765 43210"
+                    className={`${inputClass} pl-10`}
+                  />
+                </div>
+                <p className="mt-1.5 text-[11px] text-slate-500">
+                  {escalationPhoneNumber.trim() ? (
+                    <span className="font-medium text-emerald-700">
+                      ✓ Active transfer: Live calls will transfer immediately to <strong className="font-semibold text-emerald-800">{escalationPhoneNumber.trim()}</strong> upon request.
+                    </span>
+                  ) : (
+                    'When left blank, the agent politely informs callers that live transfer is unavailable and offers to log a callback request.'
+                  )}
+                </p>
+              </div>
+            </section>
+
+            {/* Complete Configuration & Blueprint Review */}
+            <div className="flex items-center justify-between border-b border-slate-200 pb-2 pt-1">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-slate-950">Full Agent Blueprint & Configuration Review</h3>
+                  <span className="flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">
+                    <Sparkles className="h-3 w-3 text-emerald-600" /> Complete overview
+                  </span>
+                </div>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  {isEditMode ? 'Verify every configured parameter across all steps before saving your updates.' : 'Verify every configured parameter across all steps before creating the active agent.'}
                 </p>
               </div>
             </div>
 
-            {/* Editable Compiled System Prompt */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider">
-                  Compiled Production System Prompt
-                </label>
+            {/* Step 1 Review: Identity, Flow & Prompt */}
+            <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-50 text-xs font-bold text-emerald-800">
+                    1
+                  </span>
+                  <div>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900">Agent Identity & Conversational Flow</h4>
+                    <p className="text-[11px] text-slate-500">Name, call direction, opening greetings, and instruction blueprint</p>
+                  </div>
+                </div>
                 <button
                   type="button"
-                  onClick={() => setFinalPrompt(compileSystemPrompt())}
-                  className="text-[11px] text-emerald-700 hover:text-emerald-800 font-semibold flex items-center gap-1 cursor-pointer"
+                  onClick={() => setCurrentStep(1)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-900"
                 >
-                  <RefreshCw className="w-3 h-3" />
-                  <span>Re-compile from settings</span>
+                  <Pencil className="h-3 w-3 text-slate-500" />
+                  <span>Edit Step 1</span>
                 </button>
               </div>
-              <textarea
-                rows={9}
-                value={finalPrompt}
-                onChange={(e) => setFinalPrompt(e.target.value)}
-                className="w-full p-3 font-mono text-[11px] leading-relaxed rounded-xl border border-slate-200 bg-slate-900 text-slate-200 focus:outline-none focus:border-emerald-500"
-              />
-              <p className="text-[10px] text-slate-400 mt-1">
-                You can fine-tune the assembled prompt directly before creating the agent.
-              </p>
-            </div>
 
-            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setCurrentStep(3)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 flex items-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Back</span>
-              </button>
+              <div className="mt-3.5 space-y-3">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Agent Name & Role</span>
+                    <p className="mt-1 text-sm font-bold text-slate-900">{name || 'Cathy'}</p>
+                    <p className="mt-0.5 text-xs leading-relaxed text-slate-600">{description || 'Voice assistant configured with structured call blueprint'}</p>
+                  </div>
 
-              <button
-                type="button"
-                onClick={handleSubmitAgent}
-                disabled={isSubmitting || !name.trim()}
-                className="px-6 py-2.5 rounded-xl bg-emerald-950 hover:bg-emerald-900 text-white text-xs font-bold shadow-xs flex items-center gap-2 cursor-pointer transition-all disabled:opacity-50"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin text-emerald-300" />
-                    <span>Deploying Voice Agent...</span>
-                  </>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Call Direction & Mode</span>
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                      <span className="rounded-md bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-900">
+                        {callDirection === 'inbound' ? 'Inbound Calls Only' : callDirection === 'outbound' ? 'Outbound Calls Only' : 'Both (Inbound & Outbound)'}
+                      </span>
+                      <span className="rounded-md bg-slate-200 px-2 py-0.5 text-xs font-medium capitalize text-slate-700">
+                        {greetingMode} greeting
+                      </span>
+                    </div>
+                    <p className="mt-1.5 text-[11px] text-slate-500">
+                      {callDirection === 'inbound'
+                        ? 'Responds immediately when customers dial in.'
+                        : callDirection === 'outbound'
+                        ? 'Speaks first when contacts answer outbound calls.'
+                        : 'Handles inbound calls and makes outbound campaign calls.'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Configured Greetings */}
+                <div className="space-y-2">
+                  {(callDirection === 'inbound' || callDirection === 'both') && (
+                    <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-3">
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-950">
+                          <PhoneIncoming className="h-3.5 w-3.5 text-emerald-700" />
+                          <span>Inbound Opening Greeting</span>
+                        </span>
+                        <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[9px] font-bold uppercase text-emerald-800">
+                          First words spoken
+                        </span>
+                      </div>
+                      <p className="mt-1.5 rounded-lg border border-emerald-100/70 bg-white/90 p-2.5 text-xs italic text-slate-800">
+                        "{inboundGreeting}"
+                      </p>
+                    </div>
+                  )}
+
+                  {(callDirection === 'outbound' || callDirection === 'both') && (
+                    <div className="rounded-xl border border-sky-100 bg-sky-50/40 p-3">
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 text-[11px] font-semibold text-sky-950">
+                          <PhoneOutgoing className="h-3.5 w-3.5 text-sky-700" />
+                          <span>Outbound Opening Greeting</span>
+                        </span>
+                        <span className="rounded bg-sky-100 px-1.5 py-0.5 text-[9px] font-bold uppercase text-sky-800">
+                          Upon call pickup
+                        </span>
+                      </div>
+                      <p className="mt-1.5 rounded-lg border border-sky-100/70 bg-white/90 p-2.5 text-xs italic text-slate-800">
+                        "{outboundGreeting}"
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* System Prompt / Instructions Review */}
+                <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-800">
+                      <FileText className="h-3.5 w-3.5 text-slate-500" />
+                      <span>Instruction Prompt Blueprint</span>
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-[10px] font-medium text-slate-500">
+                        {systemPrompt.length} chars · {systemPrompt.trim().split(/\s+/).filter(Boolean).length} words
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setIsPromptExpanded(!isPromptExpanded)}
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 hover:text-emerald-950"
+                      >
+                        {isPromptExpanded ? (
+                          <><span>Collapse</span><ChevronUp className="h-3 w-3" /></>
+                        ) : (
+                          <><span>View full</span><ChevronDown className="h-3 w-3" /></>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className={`mt-2 overflow-y-auto rounded-lg border border-slate-200 bg-white p-3 font-mono text-xs leading-relaxed text-slate-800 whitespace-pre-wrap ${
+                    isPromptExpanded ? 'max-h-96' : 'max-h-24'
+                  }`}>
+                    {systemPrompt}
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Step 2 Review: Voice Persona & Speech Calibration */}
+            <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-50 text-xs font-bold text-emerald-800">
+                    2
+                  </span>
+                  <div>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900">Voice Persona & Speech Dynamics</h4>
+                    <p className="text-[11px] text-slate-500">Voice character, language capabilities, timing buffers, and speech rate</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(2)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-900"
+                >
+                  <Pencil className="h-3 w-3 text-slate-500" />
+                  <span>Edit Step 2</span>
+                </button>
+              </div>
+
+              <div className="mt-3.5 grid gap-3 sm:grid-cols-2">
+                <div className="space-y-2.5 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+                  <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                    <Mic className="h-3 w-3 text-slate-400" />
+                    <span>Voice Persona & Languages</span>
+                  </span>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-slate-600">Selected Voice:</span>
+                    <span className="text-xs font-bold text-slate-900">
+                      {selectedVoice?.name || 'Standard Voice'} ({selectedVoice?.gender === 'female' ? 'Feminine' : selectedVoice?.gender === 'male' ? 'Masculine' : 'Neutral'})
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-slate-600">Accent / Style:</span>
+                    <span className="text-xs font-medium text-slate-800">
+                      {selectedVoice?.accent || selectedVoice?.language || 'Standard'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-slate-600">Primary Language:</span>
+                    <span className="rounded bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-900">
+                      {primaryLangName}
+                    </span>
+                  </div>
+
+                  <div className="flex items-start justify-between">
+                    <span className="text-xs text-slate-600">Supported Languages:</span>
+                    <div className="flex max-w-[65%] flex-wrap justify-end gap-1">
+                      {additionalLangNames.length ? (
+                        additionalLangNames.map((langName) => (
+                          <span key={langName} className="rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-medium text-slate-800">
+                            {langName}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-xs italic text-slate-500">None (Primary only)</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2.5 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+                  <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                    <AudioLines className="h-3 w-3 text-slate-400" />
+                    <span>Speech Timing & Turn-Taking</span>
+                  </span>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-slate-600">Speaking Speed:</span>
+                    <span className="font-mono text-xs font-semibold text-slate-900">
+                      {speakingRate.toFixed(2)}x
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Step 3 Review: Voice Stack & AI Infrastructure */}
+            <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-50 text-xs font-bold text-emerald-800">
+                    3
+                  </span>
+                  <div>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900">Voice Stack & AI Infrastructure</h4>
+                    <p className="text-[11px] text-slate-500">Telephony network, speech recognition, reasoning model, and voice synthesis</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(3)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-900"
+                >
+                  <Pencil className="h-3 w-3 text-slate-500" />
+                  <span>Edit Step 3</span>
+                </button>
+              </div>
+
+              <div className="mt-3.5 grid gap-3 sm:grid-cols-4">
+                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+                  <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                    <PhoneCall className="h-3 w-3 text-slate-400" />
+                    <span>Telephony</span>
+                  </span>
+                  <p className="mt-1 text-xs font-bold text-slate-900">{telephonyName}</p>
+                  <p className="mt-0.5 text-[10px] text-slate-500">PSTN & SIP routing</p>
+                </div>
+
+                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+                  <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                    <Mic className="h-3 w-3 text-slate-400" />
+                    <span>Speech (STT)</span>
+                  </span>
+                  <p className="mt-1 text-xs font-bold text-slate-900">{sttName}</p>
+                  <p className="mt-0.5 text-[10px] text-slate-500">Live streaming audio</p>
+                </div>
+
+                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+                  <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                    <Bot className="h-3 w-3 text-slate-400" />
+                    <span>Model (LLM)</span>
+                  </span>
+                  <p className="mt-1 text-xs font-bold text-slate-900">{llmName}</p>
+                  <p className="mt-0.5 text-[10px] text-slate-500">Conversational reasoning</p>
+                </div>
+
+                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+                  <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                    <AudioLines className="h-3 w-3 text-slate-400" />
+                    <span>Voice (TTS)</span>
+                  </span>
+                  <p className="mt-1 text-xs font-bold text-slate-900">{ttsName}</p>
+                  <p className="mt-0.5 text-[10px] text-slate-500">Neural audio synthesis</p>
+                </div>
+              </div>
+
+              {/* Keyterms */}
+              <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50/50 p-3">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                  Custom STT Keyterms & Vocabulary Hints
+                </span>
+                {parsedKeyterms.length ? (
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {parsedKeyterms.map((term, idx) => (
+                      <span key={idx} className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-800">
+                        {term}
+                      </span>
+                    ))}
+                  </div>
                 ) : (
-                  <>
-                    <Sparkles className="w-4 h-4 text-emerald-300" />
-                    <span>Create & Launch Voice Agent</span>
-                  </>
+                  <p className="mt-1 text-xs italic text-slate-500">None configured · standard vocabulary recognition</p>
                 )}
-              </button>
-            </div>
+              </div>
+            </section>
+
+            {/* Step 3 Review: Knowledge Bases & Connected Tools */}
+            <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-50 text-xs font-bold text-emerald-800">
+                    3
+                  </span>
+                  <div>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900">Knowledge Bases & Connected Actions</h4>
+                    <p className="text-[11px] text-slate-500">Connected grounding documentation and allowed external tools</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(3)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-900"
+                >
+                  <Pencil className="h-3 w-3 text-slate-500" />
+                  <span>Edit Step 3</span>
+                </button>
+              </div>
+
+              <div className="mt-3.5 grid gap-3 sm:grid-cols-2">
+                {/* Knowledge Base */}
+                <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                      <FolderOpen className="h-3 w-3 text-slate-400" />
+                      <span>Knowledge Base Folders</span>
+                    </span>
+                    <span className="rounded-md bg-sky-100 px-2 py-0.5 text-[10px] font-bold text-sky-900">
+                      {selectedKBs.length} attached
+                    </span>
+                  </div>
+
+                  {selectedKBs.length ? (
+                    <div className="max-h-40 space-y-1.5 overflow-y-auto pr-1">
+                      {selectedKBs.map((kb) => (
+                        <div key={kb.id} className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-2 text-xs">
+                          <div className="flex items-center gap-2 truncate">
+                            <Folder className="h-3.5 w-3.5 shrink-0 text-sky-700" />
+                            <span className="truncate font-semibold text-slate-900">{kb.name}</span>
+                          </div>
+                          <span className="shrink-0 text-[10px] font-medium text-slate-500">
+                            {kb.documentCount} {kb.documentCount === 1 ? 'file' : 'files'} · {kb.chunkCount || 0} chunks
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="py-2 text-xs italic text-slate-500">
+                      No knowledge folders attached. The agent will rely on its prompt blueprint instructions.
+                    </p>
+                  )}
+                </div>
+
+                {/* Connected Tools */}
+                <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                      <Bot className="h-3 w-3 text-slate-400" />
+                      <span>Connected Tools & Actions</span>
+                    </span>
+                    <span className="rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-900">
+                      {selectedToolList.length} allowed
+                    </span>
+                  </div>
+
+                  {selectedToolList.length ? (
+                    <div className="max-h-40 space-y-1.5 overflow-y-auto pr-1">
+                      {selectedToolList.map((tool) => (
+                        <div key={tool.id} className="rounded-lg border border-slate-200 bg-white p-2 text-xs">
+                          <div className="font-semibold text-slate-900">{tool.name}</div>
+                          {tool.description && (
+                            <p className="mt-0.5 truncate text-[10px] text-slate-500">{tool.description}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="py-2 text-xs italic text-slate-500">
+                      No external actions selected. Agent operates in conversational-only mode.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </section>
+
+            {renderFooter(3)}
           </div>
         )}
       </div>

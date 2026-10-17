@@ -156,7 +156,7 @@ export const ContactsPage: React.FC = () => {
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium shadow-sm transition-all cursor-pointer"
           >
             <Upload className="w-3.5 h-3.5" />
-            <span>Import Contacts</span>
+            <span>Import CSV</span>
           </button>
           <button
             onClick={() => setIsContactModalOpen(true)}
@@ -169,7 +169,7 @@ export const ContactsPage: React.FC = () => {
       </div>
 
       {/* 4 Stat Cards (Dynamic API-Backed) */}
-      <div className="grid grid-cols-1 min-[480px]:grid-cols-2 lg:grid-cols-4 gap-4">
+      {!isLoading && contacts.length > 0 && <div className="grid grid-cols-1 min-[480px]:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3.5">
           <div className="w-10 h-10 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shrink-0">
             <Users className="w-5 h-5" />
@@ -231,7 +231,7 @@ export const ContactsPage: React.FC = () => {
             <p className="text-xs text-slate-500 mt-0.5 font-normal">Not Reachable</p>
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* Filter Row */}
       <div className="flex flex-wrap items-center gap-2.5">
@@ -239,6 +239,7 @@ export const ContactsPage: React.FC = () => {
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
+            aria-label="Search contacts"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by name, number, email, tag..."
@@ -268,7 +269,7 @@ export const ContactsPage: React.FC = () => {
       {/* Main Split Layout: Table + Right Detail Drawer */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Table Column */}
-        <div className="lg:col-span-8 bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+        <div className={`bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xs ${isLoading || filteredContacts.length === 0 ? 'lg:col-span-12' : 'lg:col-span-8'}`}>
           {isLoading ? (
             <div className="p-16 flex items-center justify-center">
               <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
@@ -279,26 +280,41 @@ export const ContactsPage: React.FC = () => {
                 <Users className="w-7 h-7" />
               </div>
               <div className="max-w-md mx-auto">
-                <h3 className="text-base font-bold text-slate-900">No contacts found</h3>
+                <h2 className="text-base font-bold text-slate-900">
+                  {contacts.length === 0 ? 'Your contact list is empty' : 'No matching contacts'}
+                </h2>
                 <p className="text-xs text-slate-500 mt-1">
-                  Import contacts from CSV or add new leads manually to populate your outreach queue.
+                  {contacts.length === 0
+                    ? 'Add a contact or import a CSV to start building your outreach audience.'
+                    : 'Try another search or clear the active filters to see more contacts.'}
                 </p>
               </div>
               <div className="flex items-center justify-center gap-3 pt-2">
-                <button
-                  onClick={() => setIsContactModalOpen(true)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer"
-                >
-                  <Upload className="w-3.5 h-3.5" />
-                  <span>Import CSV</span>
-                </button>
-                <button
-                  onClick={() => setIsContactModalOpen(true)}
-                  className="px-4 py-2 rounded-xl bg-emerald-950 hover:bg-emerald-900 text-white text-xs font-semibold flex items-center gap-2 shadow-xs transition-all cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5 text-emerald-300" />
-                  <span>Add Contact</span>
-                </button>
+                {contacts.length === 0 ? (
+                  <>
+                    <button
+                      onClick={() => setIsContactModalOpen(true)}
+                      className="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer"
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>Import CSV</span>
+                    </button>
+                    <button
+                      onClick={() => setIsContactModalOpen(true)}
+                      className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold flex items-center gap-2 shadow-xs transition-all cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add Contact</span>
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => { setSearchQuery(''); setTagFilter('All Tags'); setStatusFilter('All Statuses'); }}
+                    className="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-colors"
+                  >
+                    Clear search and filters
+                  </button>
+                )}
               </div>
             </div>
           ) : (
@@ -379,7 +395,7 @@ export const ContactsPage: React.FC = () => {
         </div>
 
         {/* Right Detail Panel */}
-        <div className="lg:col-span-4 p-5 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-5 text-slate-800">
+        {!isLoading && filteredContacts.length > 0 && <div className="lg:col-span-4 p-5 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-5 text-slate-800">
           {selectedContact ? (
             <>
               <div className="flex items-start justify-between">
@@ -503,7 +519,7 @@ export const ContactsPage: React.FC = () => {
               </p>
             </div>
           )}
-        </div>
+        </div>}
       </div>
       <AddContactModal
         isOpen={isContactModalOpen}

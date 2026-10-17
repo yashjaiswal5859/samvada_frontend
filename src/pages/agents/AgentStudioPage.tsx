@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   ArrowLeft,
   Bot,
   Sliders,
-  Sparkles,
   PhoneCall,
   PhoneOff,
+  PhoneIncoming,
+  PhoneOutgoing,
   Mic,
   MicOff,
   Radio,
@@ -14,40 +15,39 @@ import {
   RotateCcw,
   Volume2,
   CheckCircle2,
-  AlertCircle,
-  Copy,
-  Download,
   BookOpen,
   Boxes,
   Cpu,
-  Layers,
   ChevronDown,
   DollarSign,
   Zap,
-  Clock,
-  Code,
-  Shield,
-  Plus,
-  Trash2,
-  Settings,
-  HelpCircle,
   ExternalLink,
   MessageSquare,
   Search,
-  Eye,
   X,
-  Send,
   Loader2,
-  Database,
   Webhook,
   FileText,
   Smartphone,
-  MessageCircle,
-  Headphones
+  Headphones,
+  SlidersHorizontal
 } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
 import { useWorkspace } from '../../contexts/WorkspaceContext';
-import { getAgent, updateAgent } from '../../api/agents';
+import { getAgent, updateAgent, getAgentBuilderResources } from '../../api/agents';
+import {
+  AVAILABLE_VOICES,
+  SUPPORTED_LANGUAGES as LANGUAGES,
+  TELEPHONY_PROVIDER_OPTIONS as TELEPHONY_OPTIONS,
+  STT_PROVIDER_OPTIONS as STT_OPTIONS,
+  LLM_PROVIDER_OPTIONS as LLM_OPTIONS,
+  TTS_PROVIDER_OPTIONS as TTS_OPTIONS,
+  DEFAULT_VOICE_PROMPT_TEMPLATE,
+  DEFAULT_INBOUND_GREETING,
+  DEFAULT_OUTBOUND_GREETING,
+  populateOrgName,
+} from '../../utils/constants';
+import { Agent, Integration, KnowledgeBase, Voice } from '../../types';
 
 interface ChatTurn {
   id: string;
@@ -57,107 +57,126 @@ interface ChatTurn {
   latencyMs?: number;
 }
 
-interface WorkflowNode {
-  id: string;
-  title: string;
-  type: 'trigger' | 'crm' | 'knowledge' | 'brain' | 'tool' | 'output';
-  subtitle: string;
-  x: number;
-  y: number;
-  status: 'active' | 'configured';
-  details: string;
-}
+type SettingsSection = 
+  | 'persona'
+  | 'greetings'
+  | 'voice'
+  | 'intelligence'
+  | 'telephony'
+  | 'kb'
+  | 'tools';
+
+const splitEntries = (value: string) => value.split(/[\n,]/).map((entry) => entry.trim()).filter(Boolean);
 
 export const AgentStudioPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const toast = useToast();
-  const { currentWorkspace } = useWorkspace();
+  const { currentWorkspace, organizationName } = useWorkspace();
+  const orgName = organizationName || 'our organization';
 
-  // Mode: 'agent' (Prompt Studio) vs 'workflow' (Visual DAG)
-  const currentTab = searchParams.get('tab') === 'workflow' ? 'workflow' : 'agent';
+  const [rawAgent, setRawAgent] = useState<Agent | null>(null);
 
-  // Agent Core State
-  const [agentName, setAgentName] = useState('Maya');
-  const [agentRole, setAgentRole] = useState('Luxury Hospitality Concierge');
+  // Auto-activate test sandbox when ?tab=test is passed
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('tab') === 'test') {
+      setMobileStudioTab('preview');
+      const testEl = document.getElementById('studio-simulator-panel');
+      if (testEl) {
+        testEl.scrollIntoView({ behavior: 'smooth' });
+      }
+    } else {
+      setMobileStudioTab('editor');
+    }
+  }, [location.search]);
+
+  // ── 1. AGENT IDENTITY & PERSONA ──
+  const [agentName, setAgentName] = useState('Cathy');
+  const [agentRole, setAgentRole] = useState('Voice Assistant');
+  const [description, setDescription] = useState('');
   const [agentStatus, setAgentStatus] = useState<'active' | 'draft'>('active');
-  const [selectedModel, setSelectedModel] = useState('GPT-4o Realtime');
-  const [selectedVoice, setSelectedVoice] = useState('Cartesia Sonic');
-  const [selectedLanguage, setSelectedLanguage] = useState('English (US)');
+  const [callDirection, setCallDirection] = useState<'inbound' | 'outbound' | 'both'>('inbound');
+  const [primaryLanguage, setPrimaryLanguage] = useState('en-IN');
+  const [additionalLanguages, setAdditionalLanguages] = useState<string[]>(['hi-IN']);
+  const [systemPrompt, setSystemPrompt] = useState(() => populateOrgName(DEFAULT_VOICE_PROMPT_TEMPLATE, orgName));
+  const [isPromptExpanded, setIsPromptExpanded] = useState(false);
 
-  // Left Drawer Settings Navigation
-  const [activeSettingsDrawer, setActiveSettingsDrawer] = useState<string | null>('speech');
-  const [isLeftRailOpen, setIsLeftRailOpen] = useState(true);
-
-  // Speech Settings
-  const [interruptionSensitivity, setInterruptionSensitivity] = useState<'Sensitive' | 'Balanced' | 'Firm'>('Balanced');
+  // ── 2. VOICE & SPEECH ──
+  const [ttsProvider, setTtsProvider] = useState<Voice['provider']>('fish-audio');
+  const [selectedVoiceId, setSelectedVoiceId] = useState('fish-swara-hi-en');
+  const [selectedVoiceName, setSelectedVoiceName] = useState('Swara');
   const [speakingRate, setSpeakingRate] = useState(1.0);
+  const [pauseBeforeSpeakingMs, setPauseBeforeSpeakingMs] = useState(400);
+  const [allowInterruptions, setAllowInterruptions] = useState(true);
+  const [interruptionSensitivity, setInterruptionSensitivity] = useState<'Sensitive' | 'Balanced' | 'Firm'>('Balanced');
   const [noiseCancellation, setNoiseCancellation] = useState(true);
-  const [speechEndDetection, setSpeechEndDetection] = useState<'Aggressive' | 'Balanced' | 'Relaxed'>('Balanced');
-  const [vocabSpecialization, setVocabSpecialization] = useState<'General' | 'Medical' | 'Hospitality'>('Hospitality');
   const [formatSpokenDigits, setFormatSpokenDigits] = useState(true);
 
-  // Call Settings
-  const [callTimezone, setCallTimezone] = useState('America/New_York (EST)');
-  const [voicemailDetection, setVoicemailDetection] = useState(true);
-  const [ivrHangup, setIvrHangup] = useState(false);
+  // ── 3. TELEPHONY & PHONE NUMBERS ──
+  const [telephonyProvider, setTelephonyProvider] = useState('plivo');
+  const [assignedPhoneNumber, setAssignedPhoneNumber] = useState('');
+  const [phoneNumberId, setPhoneNumberId] = useState('');
+  const [escalationPhoneNumber, setEscalationPhoneNumber] = useState('');
+  const [availableNumbers, setAvailableNumbers] = useState<any[]>([]);
+
+  // ── 4. STT & LLM INTELLIGENCE ──
+  const [sttProvider, setSttProvider] = useState('deepgram');
+  const [sttKeyterms, setSttKeyterms] = useState('');
+  const [selectedModel, setSelectedModel] = useState('gpt-mini');
   const [llmTemperaturePreset, setLlmTemperaturePreset] = useState<'Consistent' | 'Balanced' | 'Creative'>('Balanced');
   const [responseEagerness, setResponseEagerness] = useState<'Patient' | 'Balanced' | 'Eager'>('Balanced');
-  const [silenceAction, setSilenceAction] = useState<'End call' | 'Nudge'>('Nudge');
-  const [silenceSeconds, setSilenceSeconds] = useState(3);
 
-  // Greeting Config
+  // ── 5. GREETINGS & CALL FLOW ──
   const [firstSpeaker, setFirstSpeaker] = useState<'agent' | 'caller'>('agent');
-  const [greetingType, setGreetingType] = useState<'Static' | 'Dynamic'>('Static');
-  const [greetingText, setGreetingText] = useState(
-    'Good evening. Welcome to Grand Horizon Resort. My name is Maya. How may I orchestrate your stay today?'
-  );
+  const [greetingMode, setGreetingMode] = useState<'static' | 'dynamic'>('static');
+  const [inboundGreeting, setInboundGreeting] = useState(() => populateOrgName(DEFAULT_INBOUND_GREETING, orgName));
+  const [outboundGreeting, setOutboundGreeting] = useState(() => populateOrgName(DEFAULT_OUTBOUND_GREETING, orgName));
+  const [silenceBehavior, setSilenceBehavior] = useState<'prompt-again' | 'handoff' | 'end-call'>('prompt-again');
+  const [silenceSeconds, setSilenceSeconds] = useState(5);
+  const [voicemailDetection, setVoicemailDetection] = useState(true);
+  const [ivrHangup, setIvrHangup] = useState(false);
+  const [callTimezone, setCallTimezone] = useState('Asia/Kolkata (IST)');
 
-  // System Prompt (Markdown format)
-  const [systemPrompt, setSystemPrompt] = useState(
-`# Objective
-You are Maya, an ultra-luxury resort concierge at Grand Horizon Resort. Your goal is to deliver anticipatory, polished hospitality by handling room reservations, dining bookings, spa appointments, and bespoke guest inquiries with warmth and efficiency.
+  // ── 6. CONTEXT (KNOWLEDGE BASE & TOOLS) ──
+  const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
+  const [selectedKbIds, setSelectedKbIds] = useState<string[]>([]);
+  const [kbSearch, setKbSearch] = useState('');
+  const [integrations, setIntegrations] = useState<Integration[]>([]);
+  const [selectedTools, setSelectedTools] = useState<string[]>([]);
 
-# Persona & Acoustic Style
-- Demeanor: Impeccably courteous, warm, and sophisticated.
-- Tone: Calming and conversational; never robotic or hurried.
-- Speech Pacing: Measured, clear cadence (~150 wpm). Use graceful affirmations such as "Certainly", "With pleasure", and "I would be delighted to assist".
+  // ── 7. NAVIGATION & ACTIVE SECTION ──
+  const [activeSection, setActiveSection] = useState<SettingsSection>('persona');
+  const [isLoadingAgent, setIsLoadingAgent] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-# Guardrails & Red Lines
-- Always verify guest room number and primary surname before booking services.
-- Never quote cancellation waivers without referencing the resort policy guidelines.
-- Escalate medical emergencies or security requests immediately to human guest relations.
+  const handleSelectSection = (section: SettingsSection) => {
+    setActiveSection(section);
+    setMobileStudioTab('editor');
+    if (location.search.includes('tab=')) {
+      navigate(`/agents/${id}`, { replace: true });
+    }
+    const editorContainer = document.getElementById('studio-editor-container');
+    if (editorContainer) {
+      editorContainer.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
 
-# Available Tools & API Calls
-- calendar_book_reservation: Books dining, spa, and cabana slots into the PMS.
-- query_guest_profile: Fetches dietary preferences and loyalty status from Opera PMS.
-- dispatch_sms_confirmation: Sends a structured summary SMS to the caller's mobile.`
-  );
-
-  // Dynamic Variables
+  // ── 8. DYNAMIC MODALS ──
+  const [showVoiceModal, setShowVoiceModal] = useState(false);
+  const [voiceSearch, setVoiceSearch] = useState('');
+  const [voiceFilterCategory, setVoiceFilterCategory] = useState('All collections');
+  const [showVariableModal, setShowVariableModal] = useState(false);
   const [variables, setVariables] = useState<Record<string, string>>({
     caller_name: 'Evelyn Reed',
     reservation_date: 'October 15, 2026',
     room_type: 'Oceanfront Penthouse Suite',
     loyalty_tier: 'Diamond Ambassador',
   });
-  const [showVariableModal, setShowVariableModal] = useState(false);
 
-  // Voice Selection Modal
-  const [showVoiceModal, setShowVoiceModal] = useState(false);
-  const [voiceFilterCategory, setVoiceFilterCategory] = useState('All collections');
-  const [voiceSearch, setVoiceSearch] = useState('');
-
-  // AI Composer Drawer
-  const [isComposerOpen, setIsComposerOpen] = useState(false);
-  const [composerInput, setComposerInput] = useState('');
-  const [isComposerLoading, setIsComposerLoading] = useState(false);
-
-  // Simulator Mode
+  // ── 9. SIMULATOR STATE ──
   const [simulatorMode, setSimulatorMode] = useState<'web' | 'chat' | 'telephony'>('web');
-
-  // Audio Testing / Simulator State
   const [mobileStudioTab, setMobileStudioTab] = useState<'editor' | 'settings' | 'preview'>('editor');
   const [isCallActive, setIsCallActive] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -166,111 +185,194 @@ You are Maya, an ultra-luxury resort concierge at Grand Horizon Resort. Your goa
     {
       id: 'turn-1',
       sender: 'agent',
-      text: 'Good evening. Welcome to Grand Horizon Resort. My name is Maya. How may I orchestrate your stay today?',
+      text: 'Hello! I am ready to assist you. How can I help today?',
       timestamp: 'Just now',
       latencyMs: 185,
     },
   ]);
   const [userSpeechInput, setUserSpeechInput] = useState('');
 
-  // Workflow Canvas State
-  const [zoomLevel, setZoomLevel] = useState(100);
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>('node-brain');
-  const [isSaving, setIsSaving] = useState(false);
 
-  // Available Voices List for Modal
-  const AVAILABLE_VOICES = [
-    { id: 'cartesia-sonic', name: 'Roger', gender: 'Male', accent: 'US English', tags: 'Laid-Back, Casual, Resonant', provider: 'Cartesia' },
-    { id: 'eleven-sarah', name: 'Sarah', gender: 'Female', accent: 'US English', tags: 'Mature, Reassuring, Confident', provider: 'ElevenLabs' },
-    { id: 'cartesia-maya', name: 'Maya', gender: 'Female', accent: 'British Luxury', tags: 'Polished, Warm, Anticipatory', provider: 'Cartesia' },
-    { id: 'eleven-david', name: 'David', gender: 'Male', accent: 'US English', tags: 'Clinical, Reassuring, Empathetic', provider: 'ElevenLabs' },
-    { id: 'playht-liam', name: 'Liam', gender: 'Male', accent: 'US English', tags: 'Executive, Energetic, Authoritative', provider: 'PlayHT' },
-    { id: 'azure-elena', name: 'Elena', gender: 'Female', accent: 'US English', tags: 'Empathetic, Clear, Professional', provider: 'Azure' },
-  ];
 
-  // Workflow DAG Nodes Definition
-  const workflowNodes: WorkflowNode[] = [
-    {
-      id: 'node-trigger',
-      title: 'Call incoming / outgoing',
-      type: 'trigger',
-      subtitle: '+1 (415) 890-2341 • Twilio SIP',
-      x: 40,
-      y: 180,
-      status: 'active',
-      details: 'Accepts incoming RTP stream, negotiates G.711 / Opus audio codec, and routes session to Samvada Media Gateway.',
-    },
-    {
-      id: 'node-pre-call',
-      title: 'Pre-call integrations',
-      type: 'crm',
-      subtitle: 'Prepare context before conversation',
-      x: 280,
-      y: 120,
-      status: 'active',
-      details: 'Extracts caller ID, fetches loyalty VIP tier, previous reservation history, and injects payload into session state.',
-    },
-    {
-      id: 'node-kb',
-      title: 'Knowledge bases',
-      type: 'knowledge',
-      subtitle: 'Grand Horizon Resort Guidelines.pdf',
-      x: 580,
-      y: 40,
-      status: 'configured',
-      details: 'Embeds real-time queries with BGE-M3 and performs sub-25ms semantic search over resort amenities.',
-    },
-    {
-      id: 'node-brain',
-      title: `Agent (${agentName})`,
-      type: 'brain',
-      subtitle: `${selectedModel} • ${selectedVoice}`,
-      x: 580,
-      y: 180,
-      status: 'active',
-      details: 'Executes streaming turn-by-turn inference with conversational guardrails, interruption detection, and acoustic synthesis.',
-    },
-    {
-      id: 'node-post-call',
-      title: 'Post-call integrations',
-      type: 'tool',
-      subtitle: 'Send results to connected services',
-      x: 900,
-      y: 100,
-      status: 'configured',
-      details: 'Binds available dining tables or spa appointments directly with two-way calendar synchronization.',
-    },
-    {
-      id: 'node-extraction',
-      title: 'Data extraction',
-      type: 'output',
-      subtitle: 'User Sentiment & Structured Summary',
-      x: 900,
-      y: 260,
-      status: 'active',
-      details: 'Extracts structured JSON payload: Sentiment score, guest confirmation number, and follow-up flags.',
-    },
-    {
-      id: 'node-webhooks',
-      title: 'Webhooks',
-      type: 'output',
-      subtitle: 'Dispatch events to external endpoints',
-      x: 580,
-      y: 350,
-      status: 'configured',
-      details: 'Posts session recordings and transcript webhooks to corporate CRM upon completion.',
-    },
-  ];
+  // Filtered Voices by selected TTS provider
+  const voicesForProvider = useMemo(
+    () => AVAILABLE_VOICES.filter((voice) => voice.provider === ttsProvider),
+    [ttsProvider]
+  );
 
-  const selectedNode = workflowNodes.find((n) => n.id === selectedNodeId) || workflowNodes[3];
+  const selectedVoiceObj = voicesForProvider.find((v) => v.id === selectedVoiceId) || AVAILABLE_VOICES.find((v) => v.id === selectedVoiceId) || AVAILABLE_VOICES[0];
 
+  // Load Agent and Builder Resources
+  useEffect(() => {
+    if (!id) return;
+    let isCurrent = true;
+    setIsLoadingAgent(true);
+
+    // 1. Fetch Agent
+    getAgent(id)
+      .then((agent) => {
+        if (!isCurrent || !agent) return;
+        setRawAgent(agent);
+        setAgentName(agent.name || 'Cathy');
+        setAgentRole(agent.role || 'Voice Assistant');
+        if (agent.description) setDescription(agent.description);
+        setAgentStatus(agent.status === 'draft' ? 'draft' : 'active');
+        if (agent.systemPrompt) setSystemPrompt(agent.systemPrompt);
+        if (agent.callDirection) setCallDirection(agent.callDirection);
+        if (agent.primaryLanguage) setPrimaryLanguage(agent.primaryLanguage);
+        else if (agent.language) setPrimaryLanguage(agent.language);
+        if (agent.additionalLanguages && Array.isArray(agent.additionalLanguages)) {
+          setAdditionalLanguages(agent.additionalLanguages);
+        }
+        if (agent.telephonyProvider) setTelephonyProvider(agent.telephonyProvider);
+        if (agent.phoneNumber) setAssignedPhoneNumber(agent.phoneNumber);
+        if (agent.escalationPhoneNumber) setEscalationPhoneNumber(agent.escalationPhoneNumber);
+        if (agent.sttProvider) setSttProvider(agent.sttProvider);
+        if (agent.sttKeyterms) {
+          setSttKeyterms(Array.isArray(agent.sttKeyterms) ? agent.sttKeyterms.join(', ') : agent.sttKeyterms);
+        }
+        if (agent.model) setSelectedModel(agent.model);
+        if (agent.ttsProvider) setTtsProvider(agent.ttsProvider as any);
+        if (agent.voiceId) setSelectedVoiceId(agent.voiceId);
+        if (agent.voiceName) setSelectedVoiceName(agent.voiceName);
+        if (typeof agent.speakingRate === 'number') setSpeakingRate(agent.speakingRate);
+        if (typeof agent.pauseBeforeSpeakingMs === 'number') setPauseBeforeSpeakingMs(agent.pauseBeforeSpeakingMs);
+        if (typeof agent.allowInterruptions === 'boolean') setAllowInterruptions(agent.allowInterruptions);
+        if (agent.greetingMode) setGreetingMode(agent.greetingMode);
+        if (agent.inboundGreeting) setInboundGreeting(agent.inboundGreeting);
+        if (agent.outboundGreeting) setOutboundGreeting(agent.outboundGreeting);
+        if (agent.silenceBehavior) setSilenceBehavior(agent.silenceBehavior);
+        if (typeof agent.silenceTimeoutSeconds === 'number') setSilenceSeconds(agent.silenceTimeoutSeconds);
+        if (agent.knowledgeBaseIds && Array.isArray(agent.knowledgeBaseIds)) {
+          setSelectedKbIds(agent.knowledgeBaseIds);
+        }
+        if (agent.toolAllowlist && Array.isArray(agent.toolAllowlist)) {
+          setSelectedTools(agent.toolAllowlist);
+        }
+
+        const activeGreeting = agent.inboundGreeting || agent.greetingText || agent.outboundGreeting;
+        if (activeGreeting) {
+          setConversation([
+            {
+              id: 'turn-1',
+              sender: 'agent',
+              text: activeGreeting,
+              timestamp: 'Just now',
+              latencyMs: 180,
+            },
+          ]);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to load agent:', err);
+        toast.error('Could not load agent details', err?.message || 'Server error');
+      })
+      .finally(() => {
+        if (isCurrent) setIsLoadingAgent(false);
+      });
+
+    // 2. Fetch Builder Resources (KBs, Integrations, Numbers)
+    getAgentBuilderResources()
+      .then((resources) => {
+        if (!isCurrent || !resources) return;
+        if (resources.knowledge_bases) {
+          setKnowledgeBases(resources.knowledge_bases as any);
+        }
+        if (resources.integrations) {
+          setIntegrations(
+            resources.integrations.map((item) => ({
+              id: item.id,
+              name: item.name,
+              provider: item.provider as any,
+              category: 'crm',
+              connected: item.is_connected,
+              description: `Connected integration for ${item.name}`,
+              workspaceId: currentWorkspace?.id || '',
+              iconName: 'database',
+              apiKeySet: true,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            }))
+          );
+        }
+        if (resources.phone_numbers) {
+          const combined = [
+            ...(resources.phone_numbers.available || []),
+            ...(resources.phone_numbers.assigned || []),
+          ];
+          setAvailableNumbers(combined);
+        }
+      })
+      .catch((err) => {
+        console.warn('Failed to load builder resources:', err);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [id, currentWorkspace?.id]);
+
+  // Handle Save & Publish
+  const handleSaveAndPublish = async () => {
+    if (!id) return;
+    setIsSaving(true);
+    try {
+      const parsedKeyterms = splitEntries(sttKeyterms);
+      const greetingText = callDirection === 'outbound' ? outboundGreeting.trim() : inboundGreeting.trim();
+
+      await updateAgent(id, {
+        name: agentName.trim(),
+        role: agentRole.trim(),
+        description: description.trim(),
+        systemPrompt: systemPrompt.trim(),
+        callDirection,
+        language: primaryLanguage,
+        primaryLanguage,
+        additionalLanguages,
+        supportedLanguages: [...new Set([primaryLanguage, ...additionalLanguages])],
+        model: selectedModel,
+        voiceId: selectedVoiceId,
+        voiceName: selectedVoiceObj?.name || selectedVoiceName,
+        status: 'active',
+        telephonyProvider,
+        phoneNumber: assignedPhoneNumber || undefined,
+        phoneNumberId: phoneNumberId || undefined,
+        escalationPhoneNumber: escalationPhoneNumber.trim() || undefined,
+        sttProvider,
+        ttsProvider,
+        sttKeyterms: parsedKeyterms,
+        greetingMode,
+        greetingText,
+        inboundGreeting: inboundGreeting.trim(),
+        outboundGreeting: outboundGreeting.trim(),
+        pauseBeforeSpeakingMs,
+        allowInterruptions,
+        speakingRate,
+        silenceBehavior,
+        silenceTimeoutSeconds: silenceSeconds,
+        knowledgeBaseIds: selectedKbIds,
+        toolAllowlist: selectedTools,
+      });
+
+      setAgentStatus('active');
+      toast.success('Agent saved and live!', `“${agentName}” configuration updated successfully.`);
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Failed to save agent', err?.message || 'Please check your inputs and try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Test Simulator call handler
   const handleStartCall = () => {
     setIsCallActive(true);
     setIsSpeaking(true);
 
+    const greetingToSpeak = callDirection === 'outbound' ? outboundGreeting : inboundGreeting;
     if ('speechSynthesis' in window && !isMuted) {
       window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(greetingText);
+      const utterance = new SpeechSynthesisUtterance(greetingToSpeak);
       utterance.rate = speakingRate;
       utterance.pitch = 1.05;
       utterance.onend = () => setIsSpeaking(false);
@@ -310,11 +412,13 @@ You are Maya, an ultra-luxury resort concierge at Grand Horizon Resort. Your goa
 
     setTimeout(() => {
       const lower = callerText.toLowerCase();
-      let responseText = `I have verified your inquiry, ${variables.caller_name || 'guest'}. Our team is pleased to confirm that for ${variables.reservation_date || 'your upcoming date'}, everything is prepared. Would you like me to book dinner at the Terrace tonight?`;
-      if (lower.includes('spa') || lower.includes('massage')) {
-        responseText = 'I would be delighted to schedule a 90-minute Deep Tissue treatment for you at the Grand Spa at 4:00 PM. Shall I confirm that to your suite?';
-      } else if (lower.includes('dinner') || lower.includes('table')) {
-        responseText = 'Certainly. I have reserved an ocean-view table for two at Azure Seafood Grill for 7:30 PM this evening.';
+      let responseText = `I hear you loud and clear. Regarding "${callerText}", everything is configured and ready for ${orgName}. How else may I assist you?`;
+      if (lower.includes('booking') || lower.includes('reserve') || lower.includes('appointment')) {
+        responseText = `Certainly! I have scheduled that for ${variables.reservation_date || 'your requested date'}. Would you like me to send a confirmation SMS?`;
+      } else if (lower.includes('human') || lower.includes('agent') || lower.includes('manager')) {
+        responseText = escalationPhoneNumber
+          ? `I understand. I am transferring you directly to our team at ${escalationPhoneNumber}. Please hold.`
+          : `Connecting you with a senior representative right now. Please hold for just a moment.`;
       }
 
       const agentTurn: ChatTurn = {
@@ -338,28 +442,34 @@ You are Maya, an ultra-luxury resort concierge at Grand Horizon Resort. Your goa
       } else {
         setTimeout(() => setIsSpeaking(false), 2000);
       }
-    }, 400);
+    }, 380);
   };
 
-  const handleSaveAndPublish = async () => {
-    setIsSaving(true);
-    setTimeout(() => {
-      setIsSaving(false);
-      setAgentStatus('active');
-      toast.success(`Agent "${agentName}" published to production voice cluster!`);
-    }, 500);
+
+
+  const filteredKnowledgeBases = useMemo(() => {
+    const q = kbSearch.trim().toLowerCase();
+    if (!q) return knowledgeBases;
+    return knowledgeBases.filter((kb) => kb.name.toLowerCase().includes(q) || (kb.description && kb.description.toLowerCase().includes(q)));
+  }, [knowledgeBases, kbSearch]);
+
+  const toggleKb = (kbId: string) => {
+    setSelectedKbIds((prev) =>
+      prev.includes(kbId) ? prev.filter((id) => id !== kbId) : [...prev, kbId]
+    );
   };
 
-  const handleComposerSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!composerInput.trim()) return;
-    setIsComposerLoading(true);
-    setTimeout(() => {
-      setIsComposerLoading(false);
-      setSystemPrompt((prev) => `${prev}\n\n# Updated Instruction\n${composerInput}`);
-      toast.success('Prompt augmented with AI Composer recommendation.');
-      setComposerInput('');
-    }, 700);
+  const toggleTool = (toolId: string) => {
+    setSelectedTools((prev) =>
+      prev.includes(toolId) ? prev.filter((id) => id !== toolId) : [...prev, toolId]
+    );
+  };
+
+  const toggleAdditionalLanguage = (langCode: string) => {
+    if (langCode === primaryLanguage) return;
+    setAdditionalLanguages((prev) =>
+      prev.includes(langCode) ? prev.filter((c) => c !== langCode) : [...prev, langCode]
+    );
   };
 
   return (
@@ -384,7 +494,7 @@ You are Maya, an ultra-luxury resort concierge at Grand Horizon Resort. Your goa
               type="text"
               value={agentName}
               onChange={(e) => setAgentName(e.target.value)}
-              className="text-xs sm:text-sm font-bold text-slate-900 bg-transparent hover:bg-slate-50 focus:bg-white px-1.5 py-0.5 rounded border border-transparent focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-500/20 max-w-[110px] sm:max-w-[160px] transition-all truncate"
+              className="text-xs sm:text-sm font-bold text-slate-900 bg-transparent hover:bg-slate-50 focus:bg-white px-1.5 py-0.5 rounded border border-transparent focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-500/20 max-w-[120px] sm:max-w-[180px] transition-all truncate"
             />
             <span
               className={`text-[9px] sm:text-[10px] font-semibold px-1.5 sm:px-2 py-0.5 rounded-full border shrink-0 ${
@@ -393,9 +503,8 @@ You are Maya, an ultra-luxury resort concierge at Grand Horizon Resort. Your goa
                   : 'bg-amber-50 text-amber-800 border-amber-200'
               }`}
             >
-              {agentStatus === 'active' ? 'Published' : 'Draft'}
+              {agentStatus === 'active' ? 'Active' : 'Draft'}
             </span>
-            <span className="text-[11px] text-slate-400 font-mono hidden md:inline">Auto-saved 18:27</span>
           </div>
         </div>
 
@@ -414,771 +523,830 @@ You are Maya, an ultra-luxury resort concierge at Grand Horizon Resort. Your goa
           </div>
           <div className="h-3 w-px bg-slate-200" />
           <div className="flex items-center gap-1.5 text-slate-700">
-            <Code className="w-3.5 h-3.5 text-emerald-600" />
-            <span className="text-slate-400">Tokens:</span>
-            <span className="font-bold text-slate-900">1.4k / 128k</span>
+            <Radio className="w-3.5 h-3.5 text-emerald-600" />
+            <span className="text-slate-400">Model:</span>
+            <span className="font-bold text-slate-900">{selectedModel}</span>
           </div>
         </div>
 
         {/* Right: Actions */}
         <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-          {/* Segmented Mode Switcher */}
-          <div className="flex items-center p-0.5 rounded-lg bg-slate-100 border border-slate-200 text-xs font-semibold">
+          {/* Mobile View Switcher (< lg) */}
+          <div className="lg:hidden flex items-center p-0.5 rounded-lg bg-slate-100 border border-slate-200 text-xs">
             <button
               type="button"
-              onClick={() => setSearchParams({ tab: 'agent' })}
-              className={`px-2 sm:px-3 py-1 rounded-md flex items-center gap-1 sm:gap-1.5 transition-all cursor-pointer text-[11px] sm:text-xs ${
-                currentTab === 'agent'
-                  ? 'bg-white text-emerald-950 shadow-2xs font-bold'
-                  : 'text-slate-600 hover:text-slate-900'
+              onClick={() => setMobileStudioTab('settings')}
+              className={`px-2 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
+                mobileStudioTab === 'settings' ? 'bg-white text-emerald-950 shadow-2xs font-bold' : 'text-slate-600'
               }`}
             >
-              <Sliders className="w-3 h-3 text-emerald-600" />
-              <span>Prompt<span className="hidden sm:inline"> Studio</span></span>
+              Sections
             </button>
             <button
               type="button"
-              onClick={() => setSearchParams({ tab: 'workflow' })}
-              className={`px-2 sm:px-3 py-1 rounded-md flex items-center gap-1 sm:gap-1.5 transition-all cursor-pointer text-[11px] sm:text-xs ${
-                currentTab === 'workflow'
-                  ? 'bg-white text-emerald-950 shadow-2xs font-bold'
-                  : 'text-slate-600 hover:text-slate-900'
+              onClick={() => {
+                setMobileStudioTab('editor');
+                if (location.search.includes('tab=')) {
+                  navigate(`/agents/${id}`, { replace: true });
+                }
+              }}
+              className={`px-2 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
+                mobileStudioTab === 'editor' ? 'bg-white text-emerald-950 shadow-2xs font-bold' : 'text-slate-600'
               }`}
             >
-              <Layers className="w-3 h-3 text-emerald-600" />
-              <span>DAG<span className="hidden sm:inline"> Workflow</span></span>
+              Configure
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileStudioTab('preview')}
+              className={`px-2 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
+                mobileStudioTab === 'preview' ? 'bg-emerald-950 text-white shadow-2xs font-bold' : 'text-slate-600'
+              }`}
+            >
+              Test
             </button>
           </div>
 
-          {/* AI Composer Trigger */}
-          <button
-            onClick={() => setIsComposerOpen(!isComposerOpen)}
-            className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg border text-xs font-semibold shadow-2xs transition-all ${
-              isComposerOpen
-                ? 'bg-emerald-50 text-emerald-950 border-emerald-300'
-                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-            <span className="hidden sm:inline">Composer</span>
-          </button>
+          {/* Desktop/Tablet Mode Switcher (>= lg) */}
+          <div className="hidden lg:flex items-center p-1 rounded-xl bg-slate-100 border border-slate-200 text-xs font-semibold">
+            <button
+              type="button"
+              onClick={() => {
+                setMobileStudioTab('editor');
+                if (location.search.includes('tab=')) {
+                  navigate(`/agents/${id}`, { replace: true });
+                }
+              }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                mobileStudioTab !== 'preview'
+                  ? 'bg-white text-emerald-950 font-bold shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Configure Form</span>
+            </button>
 
-          {/* Preview / Sandbox Toggle for Tablet & Mobile */}
-          <button
-            onClick={() => setMobileStudioTab(mobileStudioTab === 'preview' ? 'editor' : 'preview')}
-            className={`xl:hidden flex items-center gap-1 sm:gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold shadow-2xs transition-all ${
-              mobileStudioTab === 'preview'
-                ? 'bg-emerald-950 text-white border-emerald-950 shadow-xs'
-                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-            }`}
-            title="Toggle Live Test Sandbox"
-          >
-            <Headphones className="w-3.5 h-3.5 text-emerald-600" />
-            <span className="hidden sm:inline">Preview</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setMobileStudioTab('preview')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                mobileStudioTab === 'preview'
+                  ? 'bg-emerald-950 text-white font-bold shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Headphones className={`w-3.5 h-3.5 ${mobileStudioTab === 'preview' ? 'text-emerald-400' : 'text-slate-500'}`} />
+              <span>Test Simulator</span>
+            </button>
+          </div>
 
-          {/* Publish Agent CTA */}
+          {/* Save & Publish Agent CTA */}
           <button
             onClick={handleSaveAndPublish}
             disabled={isSaving}
-            className="px-2.5 sm:px-3.5 py-1.5 rounded-lg bg-emerald-950 hover:bg-emerald-900 text-white text-xs font-semibold shadow-xs flex items-center gap-1 sm:gap-1.5 transition-all cursor-pointer active:scale-95"
+            className="px-3 sm:px-4 py-1.5 rounded-lg bg-emerald-950 hover:bg-emerald-900 text-white text-xs font-bold shadow-xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
           >
-            {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />}
-            <span>Publish</span>
+            {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400" /> : <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />}
+            <span>{isSaving ? 'Saving…' : 'Save & Publish'}</span>
           </button>
         </div>
       </header>
 
-      {/* Mobile Sub-Toolbar: Quick pane switching on mobile and tablet */}
-      <div className="lg:hidden flex items-center justify-around border-b border-slate-200 bg-slate-50 px-2 py-1.5 text-xs font-semibold shrink-0 z-20">
-        <button
-          type="button"
-          onClick={() => setMobileStudioTab('settings')}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
-            mobileStudioTab === 'settings'
-              ? 'bg-emerald-950 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-          }`}
-        >
-          <Sliders className="w-3.5 h-3.5" />
-          <span>Settings</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setMobileStudioTab('editor')}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
-            mobileStudioTab === 'editor'
-              ? 'bg-emerald-950 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-          }`}
-        >
-          <FileText className="w-3.5 h-3.5" />
-          <span>{currentTab === 'agent' ? 'Prompt Editor' : 'Workflow DAG'}</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setMobileStudioTab('preview')}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
-            mobileStudioTab === 'preview'
-              ? 'bg-emerald-950 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-          }`}
-        >
-          <Headphones className="w-3.5 h-3.5" />
-          <span>Test Sandbox</span>
-        </button>
-      </div>
-
       {/* ── WORKSPACE BODY ── */}
       <div className="flex-1 flex overflow-hidden">
-        {/* ── SUB-LEFT RAIL: Persistence-style Settings Drawer ── */}
-        {currentTab === 'agent' && (
-          <div className={`${mobileStudioTab === 'settings' ? 'flex' : 'hidden'} lg:flex border-r border-slate-200 shrink-0 bg-slate-50 w-full lg:w-auto h-full overflow-hidden`}>
-            {/* Narrow Icon/Menu Rail */}
-            <div className={`${activeSettingsDrawer ? 'hidden sm:block' : 'block'} w-full sm:w-48 bg-slate-50 border-r border-slate-200 p-2.5 space-y-4 overflow-y-auto text-xs shrink-0`}>
-              <div className="space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2">Actions</span>
-                <button
-                  onClick={() => setActiveSettingsDrawer('integrations')}
-                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg transition-all ${
-                    activeSettingsDrawer === 'integrations'
-                      ? 'bg-emerald-50 text-emerald-950 font-bold border-l-2 border-emerald-600'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    <Boxes className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Integrations</span>
-                  </span>
-                  <span className="text-slate-400">›</span>
-                </button>
+        {/* ── SUB-LEFT RAIL: CATEGORY INSPECTION NAVIGATION ── */}
+        {
+          <div className={`${mobileStudioTab === 'settings' ? 'flex' : 'hidden'} lg:flex border-r border-slate-200 shrink-0 bg-slate-50 w-full sm:w-56 lg:w-60 h-full overflow-y-auto p-3 flex-col gap-4 text-xs`}>
+            {/* Group 1: Setup & Identity */}
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2">Setup & Persona</span>
+              <button
+                onClick={() => handleSelectSection('persona')}
+                className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg transition-all cursor-pointer ${
+                  activeSection === 'persona'
+                    ? 'bg-white text-emerald-950 font-bold border-l-3 border-emerald-600 shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <Bot className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>General & Prompt</span>
+                </span>
+                <span className="text-slate-400">›</span>
+              </button>
 
-                <button
-                  onClick={() => setActiveSettingsDrawer('tools')}
-                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg transition-all ${
-                    activeSettingsDrawer === 'tools'
-                      ? 'bg-emerald-50 text-emerald-950 font-bold border-l-2 border-emerald-600'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    <Code className="w-3.5 h-3.5 text-slate-400" />
-                    <span>System tools</span>
-                  </span>
-                  <span className="text-slate-400">›</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveSettingsDrawer('mcps')}
-                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg transition-all ${
-                    activeSettingsDrawer === 'mcps'
-                      ? 'bg-emerald-50 text-emerald-950 font-bold border-l-2 border-emerald-600'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    <Database className="w-3.5 h-3.5 text-slate-400" />
-                    <span>MCP Servers</span>
-                  </span>
-                  <span className="text-slate-400">›</span>
-                </button>
-              </div>
-
-              <div className="space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2">Context</span>
-                <button
-                  onClick={() => setActiveSettingsDrawer('kb')}
-                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg transition-all ${
-                    activeSettingsDrawer === 'kb'
-                      ? 'bg-emerald-50 text-emerald-950 font-bold border-l-2 border-emerald-600'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    <BookOpen className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Knowledge base</span>
-                  </span>
-                  <span className="text-slate-400">›</span>
-                </button>
-              </div>
-
-              <div className="space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2">Behaviour</span>
-                <button
-                  onClick={() => setActiveSettingsDrawer('speech')}
-                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg transition-all ${
-                    activeSettingsDrawer === 'speech'
-                      ? 'bg-emerald-50 text-emerald-950 font-bold border-l-2 border-emerald-600'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    <Volume2 className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Speech settings</span>
-                  </span>
-                  <span className="text-slate-400">›</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveSettingsDrawer('call')}
-                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg transition-all ${
-                    activeSettingsDrawer === 'call'
-                      ? 'bg-emerald-50 text-emerald-950 font-bold border-l-2 border-emerald-600'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    <PhoneCall className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Call settings</span>
-                  </span>
-                  <span className="text-slate-400">›</span>
-                </button>
-              </div>
-
-              <div className="space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2">After Call</span>
-                <button
-                  onClick={() => setActiveSettingsDrawer('extraction')}
-                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg transition-all ${
-                    activeSettingsDrawer === 'extraction'
-                      ? 'bg-emerald-50 text-emerald-950 font-bold border-l-2 border-emerald-600'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    <FileText className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Data extraction</span>
-                  </span>
-                  <span className="text-slate-400">›</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveSettingsDrawer('webhooks')}
-                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg transition-all ${
-                    activeSettingsDrawer === 'webhooks'
-                      ? 'bg-emerald-50 text-emerald-950 font-bold border-l-2 border-emerald-600'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    <Webhook className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Webhooks</span>
-                  </span>
-                  <span className="text-slate-400">›</span>
-                </button>
-              </div>
+              <button
+                onClick={() => handleSelectSection('greetings')}
+                className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg transition-all cursor-pointer ${
+                  activeSection === 'greetings'
+                    ? 'bg-white text-emerald-950 font-bold border-l-3 border-emerald-600 shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <MessageSquare className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>Call Direction & Greeting</span>
+                </span>
+                <span className="text-slate-400">›</span>
+              </button>
             </div>
 
-            {/* Slide-out Settings Inspector Panel */}
-            {activeSettingsDrawer && (
-              <div className="w-full sm:w-72 bg-white border-r border-slate-200 p-4 overflow-y-auto space-y-4 text-xs shadow-inner shrink-0">
-                <div className="sm:hidden pb-2 mb-1 border-b border-slate-100 flex items-center justify-between">
-                  <button
-                    type="button"
-                    onClick={() => setActiveSettingsDrawer(null)}
-                    className="flex items-center gap-1.5 text-emerald-800 font-semibold text-xs"
-                  >
-                    <ArrowLeft className="w-3.5 h-3.5" />
-                    <span>Back to settings categories</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveSettingsDrawer(null)}
-                    className="text-slate-400 p-1"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-                {/* 1. Speech Settings Drawer */}
-                {activeSettingsDrawer === 'speech' && (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                      <h4 className="font-bold text-slate-900">Speech settings</h4>
-                      <button onClick={() => setActiveSettingsDrawer(null)} className="text-slate-400 hover:text-slate-600">
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+            {/* Group 2: Voice & Intelligence */}
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2">Voice & Models</span>
+              <button
+                onClick={() => handleSelectSection('voice')}
+                className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg transition-all cursor-pointer ${
+                  activeSection === 'voice' || activeSection === 'intelligence'
+                    ? 'bg-white text-emerald-950 font-bold border-l-3 border-emerald-600 shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <Volume2 className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>Voice & Model</span>
+                </span>
+                <span className="text-slate-400">›</span>
+              </button>
 
+              <button
+                onClick={() => handleSelectSection('telephony')}
+                className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg transition-all cursor-pointer ${
+                  activeSection === 'telephony'
+                    ? 'bg-white text-emerald-950 font-bold border-l-3 border-emerald-600 shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <PhoneCall className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>Telephony & Escalation</span>
+                </span>
+                <span className="text-slate-400">›</span>
+              </button>
+            </div>
+
+            {/* Group 3: Context & Integrations */}
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2">Knowledge & Tools</span>
+              <button
+                onClick={() => handleSelectSection('kb')}
+                className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg transition-all cursor-pointer ${
+                  activeSection === 'kb'
+                    ? 'bg-white text-emerald-950 font-bold border-l-3 border-emerald-600 shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <BookOpen className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>Knowledge Base ({selectedKbIds.length})</span>
+                </span>
+                <span className="text-slate-400">›</span>
+              </button>
+
+              <button
+                onClick={() => handleSelectSection('tools')}
+                className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg transition-all cursor-pointer ${
+                  activeSection === 'tools'
+                    ? 'bg-white text-emerald-950 font-bold border-l-3 border-emerald-600 shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <Boxes className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>Tools & Integrations ({selectedTools.length})</span>
+                </span>
+                <span className="text-slate-400">›</span>
+              </button>
+            </div>
+          </div>
+        }
+
+        {/* ── CENTER STAGE: EDIT MODE FORM CARDS ── */}
+        <div id="studio-editor-container" className={`${mobileStudioTab === 'editor' ? 'flex' : 'hidden'} 2xl:flex flex-1 flex-col overflow-y-auto min-w-0 bg-white`}>
+            <div className="p-6 max-w-4xl space-y-6 mx-auto w-full pb-28">
+
+              {/* SECTION 1: GENERAL & PERSONA */}
+              {(activeSection === 'persona') && (
+                <div className="space-y-5 animate-fade-in">
+                  <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
                     <div>
-                      <label className="font-bold text-slate-700 block mb-1">Interruption sensitivity</label>
-                      <p className="text-[11px] text-slate-500 mb-2">Delay before agent stops speaking when user speaks.</p>
-                      <div className="grid grid-cols-3 gap-1 p-0.5 bg-slate-100 rounded-lg">
-                        {(['Sensitive', 'Balanced', 'Firm'] as const).map((mode) => (
-                          <button
-                            key={mode}
-                            onClick={() => setInterruptionSensitivity(mode)}
-                            className={`py-1 text-center font-semibold rounded ${
-                              interruptionSensitivity === mode ? 'bg-white text-emerald-950 shadow-2xs font-bold' : 'text-slate-600'
-                            }`}
-                          >
-                            {mode}
-                          </button>
-                        ))}
-                      </div>
+                      <h3 className="text-base font-bold text-slate-900">General Identity & Persona Blueprint</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">Configure your agent's identity, language, and core instructions.</p>
                     </div>
+                    <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 text-[11px] font-bold border border-emerald-200">
+                      Step 1 Sync
+                    </span>
+                  </div>
 
+                  {/* Name, Role & Description */}
+                  <div className="grid sm:grid-cols-2 gap-4">
                     <div>
-                      <div className="flex justify-between font-bold text-slate-700 mb-1">
-                        <span>Voice speed</span>
-                        <span className="font-mono text-emerald-800">{speakingRate}x</span>
-                      </div>
-                      <div className="grid grid-cols-5 gap-1 p-0.5 bg-slate-100 rounded-lg text-center font-mono text-[10px]">
-                        {[0.8, 0.9, 1.0, 1.1, 1.2].map((rate) => (
-                          <button
-                            key={rate}
-                            onClick={() => setSpeakingRate(rate)}
-                            className={`py-1 rounded font-semibold ${
-                              speakingRate === rate ? 'bg-white text-emerald-950 shadow-2xs font-bold' : 'text-slate-600'
-                            }`}
-                          >
-                            {rate}x
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between p-2.5 rounded-lg border border-slate-200 bg-slate-50">
-                      <div>
-                        <span className="font-bold text-slate-900 block">Noise cancellation</span>
-                        <span className="text-[10px] text-slate-500">Filter background noise in real-time</span>
-                      </div>
+                      <label className="text-xs font-semibold text-slate-800 block mb-1">Agent Name</label>
                       <input
-                        type="checkbox"
-                        checked={noiseCancellation}
-                        onChange={(e) => setNoiseCancellation(e.target.checked)}
-                        className="w-4 h-4 rounded text-emerald-600"
+                        type="text"
+                        value={agentName}
+                        onChange={(e) => setAgentName(e.target.value)}
+                        placeholder="e.g. Cathy, Maya, Support Bot"
+                        className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-semibold text-slate-900 focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500"
                       />
                     </div>
-
                     <div>
-                      <label className="font-bold text-slate-700 block mb-1">Speech end detection</label>
-                      <div className="grid grid-cols-3 gap-1 p-0.5 bg-slate-100 rounded-lg">
-                        {(['Aggressive', 'Balanced', 'Relaxed'] as const).map((det) => (
-                          <button
-                            key={det}
-                            onClick={() => setSpeechEndDetection(det)}
-                            className={`py-1 text-center font-semibold rounded ${
-                              speechEndDetection === det ? 'bg-white text-emerald-950 shadow-2xs font-bold' : 'text-slate-600'
-                            }`}
-                          >
-                            {det}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between p-2.5 rounded-lg border border-slate-200 bg-slate-50">
-                      <div>
-                        <span className="font-bold text-slate-900 block">Formatting digits & dates</span>
-                        <span className="text-[10px] text-slate-500">Format spoken numbers to digits in transcript</span>
-                      </div>
+                      <label className="text-xs font-semibold text-slate-800 block mb-1">Role / Headline</label>
                       <input
-                        type="checkbox"
-                        checked={formatSpokenDigits}
-                        onChange={(e) => setFormatSpokenDigits(e.target.checked)}
-                        className="w-4 h-4 rounded text-emerald-600"
+                        type="text"
+                        value={agentRole}
+                        onChange={(e) => setAgentRole(e.target.value)}
+                        placeholder="e.g. Customer Support Specialist"
+                        className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-semibold text-slate-900 focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500"
                       />
                     </div>
                   </div>
-                )}
 
-                {/* 2. Call Settings Drawer */}
-                {activeSettingsDrawer === 'call' && (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                      <h4 className="font-bold text-slate-900">Call settings</h4>
-                      <button onClick={() => setActiveSettingsDrawer(null)} className="text-slate-400 hover:text-slate-600">
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-800 block mb-1">Description</label>
+                    <textarea
+                      rows={2}
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="What is this agent's scope and purpose?"
+                      className="w-full p-3 rounded-xl border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500"
+                    />
+                  </div>
 
+                  {/* Languages */}
+                  <div className="grid sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="font-bold text-slate-700 block mb-1">Time zone</label>
+                      <label className="text-xs font-semibold text-slate-800 block mb-1">Primary Language</label>
                       <select
-                        value={callTimezone}
-                        onChange={(e) => setCallTimezone(e.target.value)}
-                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-slate-800 font-semibold"
+                        value={primaryLanguage}
+                        onChange={(e) => setPrimaryLanguage(e.target.value)}
+                        className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-900 focus:outline-none focus:border-emerald-600"
                       >
-                        <option value="America/New_York (EST)">America/New_York (EST)</option>
-                        <option value="Europe/London (GMT)">Europe/London (GMT)</option>
-                        <option value="Asia/Kolkata (IST)">Asia/Kolkata (IST)</option>
+                        {LANGUAGES.map((lang) => (
+                          <option key={lang.id} value={lang.id}>{lang.name}</option>
+                        ))}
                       </select>
                     </div>
 
-                    <div className="flex items-center justify-between p-2.5 rounded-lg border border-slate-200 bg-slate-50">
-                      <div>
-                        <span className="font-bold text-slate-900 block">Voicemail detection (AMD)</span>
-                        <span className="text-[10px] text-slate-500">Hang up or leave message if answering machine detected</span>
-                      </div>
-                      <input
-                        type="checkbox"
-                        checked={voicemailDetection}
-                        onChange={(e) => setVoicemailDetection(e.target.checked)}
-                        className="w-4 h-4 rounded text-emerald-600"
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between p-2.5 rounded-lg border border-slate-200 bg-slate-50">
-                      <div>
-                        <span className="font-bold text-slate-900 block">IVR hangup</span>
-                        <span className="text-[10px] text-slate-500">Hang up immediately if automated IVR answers</span>
-                      </div>
-                      <input
-                        type="checkbox"
-                        checked={ivrHangup}
-                        onChange={(e) => setIvrHangup(e.target.checked)}
-                        className="w-4 h-4 rounded text-emerald-600"
-                      />
-                    </div>
-
                     <div>
-                      <label className="font-bold text-slate-700 block mb-1">LLM Temperature</label>
-                      <div className="grid grid-cols-3 gap-1 p-0.5 bg-slate-100 rounded-lg">
+                      <label className="text-xs font-semibold text-slate-800 block mb-1">Additional Multilingual Support</label>
+                      <div className="flex flex-wrap gap-1.5 min-h-10 p-2 rounded-xl border border-slate-200 bg-slate-50 items-center">
+                        {additionalLanguages.map((code) => {
+                          const langObj = LANGUAGES.find((l) => l.id === code);
+                          return (
+                            <span
+                              key={code}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 text-[11px] font-semibold"
+                            >
+                              <span>{langObj?.name || code}</span>
+                              <button
+                                type="button"
+                                onClick={() => toggleAdditionalLanguage(code)}
+                                className="text-emerald-700 hover:text-emerald-950"
+                              >
+                                ×
+                              </button>
+                            </span>
+                          );
+                        })}
+                        <select
+                          value=""
+                          onChange={(e) => {
+                            if (e.target.value) toggleAdditionalLanguage(e.target.value);
+                          }}
+                          className="bg-transparent text-[11px] text-slate-500 font-semibold focus:outline-none cursor-pointer"
+                        >
+                          <option value="">+ Add language</option>
+                          {LANGUAGES.filter((l) => l.id !== primaryLanguage && !additionalLanguages.includes(l.id)).map((l) => (
+                            <option key={l.id} value={l.id}>{l.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* System Prompt Blueprint */}
+                  <div className="p-4 rounded-xl border border-slate-200 bg-white space-y-3 shadow-2xs">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <label className="text-xs font-bold text-slate-900 block">System Persona & Prompt Instructions</label>
+                        <p className="text-[11px] text-slate-500">The behavioral blueprint that guides this agent's tone, reasoning, and policies.</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSystemPrompt(populateOrgName(DEFAULT_VOICE_PROMPT_TEMPLATE, orgName))}
+                          className="text-[11px] text-slate-500 hover:text-emerald-800 flex items-center gap-1 font-semibold"
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                          <span>Reset Template</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <textarea
+                      rows={isPromptExpanded ? 16 : 8}
+                      value={systemPrompt}
+                      onChange={(e) => setSystemPrompt(e.target.value)}
+                      className="w-full p-3.5 rounded-xl border border-slate-200 bg-slate-50 font-mono text-xs text-slate-900 leading-relaxed focus:bg-white focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500/20"
+                    />
+
+                    <div className="flex items-center justify-between text-[11px] text-slate-500">
+                      <span>{systemPrompt.length} characters · {systemPrompt.split(/\s+/).filter(Boolean).length} words</span>
+                      <button
+                        type="button"
+                        onClick={() => setIsPromptExpanded(!isPromptExpanded)}
+                        className="text-emerald-800 font-semibold hover:underline cursor-pointer"
+                      >
+                        {isPromptExpanded ? 'Collapse' : 'Expand full editor'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* SECTION 2: VOICE & TELEPHONY */}
+              {/* SECTION: VOICE & MODEL */}
+              {(activeSection === 'voice' || activeSection === 'intelligence') && (
+                <div className="space-y-5 animate-fade-in">
+                  <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-base font-bold text-slate-900">Voice & AI Models</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">Configure foundation AI engines (LLM, STT, TTS), vocal timbre, and conversation pacing.</p>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 text-[11px] font-bold border border-emerald-200">
+                      Step 2 & 3 Sync
+                    </span>
+                  </div>
+
+                  {/* 1. Foundation AI Models: LLM, STT, TTS */}
+                  <div className="p-4 rounded-xl border border-slate-200 bg-white space-y-3">
+                    <label className="text-xs font-bold text-slate-900 block">Foundation AI Engines</label>
+                    <div className="grid sm:grid-cols-3 gap-4">
+                      <div>
+                        <label className="text-xs font-semibold text-slate-700 block mb-1">LLM Model</label>
+                        <select
+                          value={selectedModel}
+                          onChange={(e) => setSelectedModel(e.target.value)}
+                          className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-900 focus:outline-none focus:border-emerald-600"
+                        >
+                          {LLM_OPTIONS.map((opt) => (
+                            <option key={opt.id} value={opt.id}>{opt.name}{opt.recommended ? ' · Recommended' : ''}</option>
+                          ))}
+                        </select>
+                        <p className="mt-1 text-[10px] text-slate-500">Core intelligence & reasoning engine.</p>
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-semibold text-slate-700 block mb-1">STT Provider</label>
+                        <select
+                          value={sttProvider}
+                          onChange={(e) => setSttProvider(e.target.value)}
+                          className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-900 focus:outline-none focus:border-emerald-600"
+                        >
+                          {STT_OPTIONS.map((opt) => (
+                            <option key={opt.id} value={opt.id}>{opt.name}{opt.recommended ? ' · Recommended' : ''}</option>
+                          ))}
+                        </select>
+                        <p className="mt-1 text-[10px] text-slate-500">Real-time caller speech transcription.</p>
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-semibold text-slate-700 block mb-1">TTS Provider</label>
+                        <select
+                          value={ttsProvider}
+                          onChange={(e) => {
+                            const newProvider = e.target.value as any;
+                            setTtsProvider(newProvider);
+                            const matching = AVAILABLE_VOICES.find((v) => v.provider === newProvider);
+                            if (matching) {
+                              setSelectedVoiceId(matching.id);
+                              setSelectedVoiceName(matching.name);
+                            }
+                          }}
+                          className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-900 focus:outline-none focus:border-emerald-600"
+                        >
+                          {TTS_OPTIONS.map((opt) => (
+                            <option key={opt.id} value={opt.id}>{opt.name}{opt.recommended ? ' · Recommended' : ''}</option>
+                          ))}
+                        </select>
+                        <p className="mt-1 text-[10px] text-slate-500">Text-to-speech audio synthesis engine.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 2. Active Voice Timbre & Audio Pacing */}
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    {/* Active Voice */}
+                    <div className="p-4 rounded-xl border border-slate-200 bg-white space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-slate-900 block">Active Voice</label>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-semibold">
+                          {selectedVoiceObj?.gender || 'Voice'} • {selectedVoiceObj?.accent || 'Natural'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowVoiceModal(true)}
+                          className="flex-1 h-10 px-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-slate-900 flex items-center justify-between cursor-pointer shadow-2xs"
+                        >
+                          <div className="flex items-center gap-2 truncate">
+                            <Volume2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                            <span className="truncate">{selectedVoiceObj?.name || selectedVoiceName}</span>
+                          </div>
+                          <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if ('speechSynthesis' in window) {
+                              window.speechSynthesis.cancel();
+                              const utterance = new SpeechSynthesisUtterance(`Hello! This is ${selectedVoiceObj?.name || 'Swara'}. How can I help you today?`);
+                              utterance.rate = speakingRate;
+                              window.speechSynthesis.speak(utterance);
+                            }
+                          }}
+                          className="h-10 px-3 rounded-xl border border-slate-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold flex items-center gap-1 cursor-pointer shrink-0"
+                          title="Preview voice"
+                        >
+                          <Play className="w-3 h-3 fill-current" />
+                          <span>Preview</span>
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-slate-500">Acoustic timbre used for live conversation streaming.</p>
+                    </div>
+
+                    {/* Voice Speed / Rate Slider */}
+                    <div className="p-4 rounded-xl border border-slate-200 bg-white space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <label className="text-xs font-bold text-slate-900 block">Voice Speed / Rate</label>
+                          <p className="text-[10px] text-slate-500">Conversational pacing (1.00x normal).</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {speakingRate !== 1.0 && (
+                            <button
+                              type="button"
+                              onClick={() => setSpeakingRate(1.0)}
+                              className="text-[10px] font-semibold text-slate-400 hover:text-emerald-700 cursor-pointer"
+                            >
+                              Reset
+                            </button>
+                          )}
+                          <span className="font-mono text-xs font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-900 border border-emerald-200">
+                            {Number(speakingRate).toFixed(2)}x
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1 pt-1">
+                        <input
+                          type="range"
+                          min="0.8"
+                          max="1.3"
+                          step="0.05"
+                          value={speakingRate}
+                          onChange={(e) => setSpeakingRate(parseFloat(e.target.value))}
+                          aria-label="Voice speed slider"
+                          className="w-full accent-emerald-600 cursor-pointer"
+                        />
+                        <div className="flex items-center justify-between text-[10px] font-medium text-slate-400 font-mono">
+                          <span>0.80x (Slower)</span>
+                          <span className={speakingRate === 1 ? 'text-emerald-700 font-bold' : ''}>1.00x (Natural)</span>
+                          <span>1.30x (Faster)</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 3. Speech Keyterms & LLM Temperature */}
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-xs font-semibold text-slate-800 block mb-1">Speech Vocabulary Boost (STT Keyterms)</label>
+                      <textarea
+                        rows={2}
+                        value={sttKeyterms}
+                        onChange={(e) => setSttKeyterms(e.target.value)}
+                        placeholder="e.g. Swiggy, UPI, Zomato, Aadhaar, HDFC, OTP (comma or newline separated)"
+                        className="w-full p-3 rounded-xl border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-emerald-600"
+                      />
+                      <p className="mt-1 text-[11px] text-slate-500">Provide company names, industry acronyms, or product terms to boost phonetic recognition.</p>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
+                      <label className="text-xs font-bold text-slate-800 block">LLM Temperature Preset</label>
+                      <div className="grid grid-cols-3 gap-1 p-0.5 bg-slate-100 rounded-lg text-xs font-semibold">
                         {(['Consistent', 'Balanced', 'Creative'] as const).map((mode) => (
                           <button
                             key={mode}
+                            type="button"
                             onClick={() => setLlmTemperaturePreset(mode)}
-                            className={`py-1 text-center font-semibold rounded ${
-                              llmTemperaturePreset === mode ? 'bg-white text-emerald-950 shadow-2xs font-bold' : 'text-slate-600'
-                            }`}
+                            className={`py-1.5 rounded-md ${llmTemperaturePreset === mode ? 'bg-white text-emerald-950 font-bold shadow-2xs' : 'text-slate-600'}`}
                           >
                             {mode}
                           </button>
                         ))}
                       </div>
                     </div>
+                  </div>
+                </div>
+              )}
 
+              {/* SECTION 3: TELEPHONY & PHONE NUMBERS */}
+              {(activeSection === 'telephony') && (
+                <div className="space-y-5 animate-fade-in">
+                  <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
                     <div>
-                      <label className="font-bold text-slate-700 block mb-1">Silence handling</label>
-                      <div className="flex items-center gap-2 mt-1">
-                        <select
-                          value={silenceAction}
-                          onChange={(e) => setSilenceAction(e.target.value as any)}
-                          className="px-2.5 py-1.5 border border-slate-200 rounded-lg text-slate-800 font-semibold"
-                        >
-                          <option value="Nudge">Nudge caller</option>
-                          <option value="End call">End call</option>
-                        </select>
-                        <span className="text-slate-500">after</span>
-                        <input
-                          type="number"
-                          value={silenceSeconds}
-                          onChange={(e) => setSilenceSeconds(Number(e.target.value))}
-                          className="w-12 px-2 py-1 border border-slate-200 rounded-lg text-center font-mono font-bold"
-                          min={1}
-                          max={15}
-                        />
-                        <span className="text-slate-500">sec</span>
-                      </div>
+                      <h3 className="text-base font-bold text-slate-900">Telephony Routing & Phone Allocation</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">Bind assigned phone numbers, carrier provider, and human escalation handoff.</p>
                     </div>
-                  </div>
-                )}
-
-                {/* 3. Data Extraction Drawer */}
-                {activeSettingsDrawer === 'extraction' && (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                      <h4 className="font-bold text-slate-900">Data extraction</h4>
-                      <button onClick={() => setActiveSettingsDrawer(null)} className="text-slate-400 hover:text-slate-600">
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                    <p className="text-[11px] text-slate-500">Extract structured parameters from the conversation upon completion.</p>
-
-                    <div className="space-y-2">
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-between">
-                        <div>
-                          <span className="font-bold text-slate-900 block">User Sentiment</span>
-                          <span className="text-[10px] text-slate-500">Positive, Neutral, Escalated</span>
-                        </div>
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                      </div>
-
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-between">
-                        <div>
-                          <span className="font-bold text-slate-900 block">Executive Summary</span>
-                          <span className="text-[10px] text-slate-500">3-bullet summary text</span>
-                        </div>
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                      </div>
-
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-between">
-                        <div>
-                          <span className="font-bold text-slate-900 block">Reservation Details</span>
-                          <span className="text-[10px] text-slate-500">Dates, room tier, party size</span>
-                        </div>
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => toast.success('Custom extraction parameter added.')}
-                      className="w-full py-1.5 border border-dashed border-emerald-300 text-emerald-900 rounded-lg text-xs font-semibold hover:bg-emerald-50"
-                    >
-                      + Add custom extraction field
-                    </button>
-                  </div>
-                )}
-
-                {/* 4. MCP Servers Drawer */}
-                {activeSettingsDrawer === 'mcps' && (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                      <h4 className="font-bold text-slate-900">Model Context Protocol (MCP)</h4>
-                      <button onClick={() => setActiveSettingsDrawer(null)} className="text-slate-400 hover:text-slate-600">
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                    <p className="text-[11px] text-slate-500">Connect standardized tool servers via Model Context Protocol.</p>
-                    <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50 space-y-1">
-                      <span className="font-bold text-slate-900 block">PostgreSQL Database MCP</span>
-                      <span className="text-[10px] text-emerald-700 font-semibold">Connected • 12 tools active</span>
-                    </div>
-                    <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50 space-y-1">
-                      <span className="font-bold text-slate-900 block">Salesforce CRM MCP</span>
-                      <span className="text-[10px] text-emerald-700 font-semibold">Connected • 8 tools active</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── CENTER STAGE: PROMPT STUDIO OR VISUAL WORKFLOW DAG ── */}
-        <div className={`${mobileStudioTab === 'editor' ? 'flex' : 'hidden'} lg:flex flex-1 flex-col overflow-y-auto min-w-0 bg-white`}>
-          {currentTab === 'agent' ? (
-            <div className="p-6 max-w-4xl space-y-5 mx-auto w-full pb-20">
-              {/* Architecture Model & Voice Selector Bar */}
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
-                <div className="flex items-center gap-3">
-                  {/* Model Selector */}
-                  <div className="relative">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Model</label>
-                    <select
-                      value={selectedModel}
-                      onChange={(e) => setSelectedModel(e.target.value)}
-                      className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-900 shadow-2xs cursor-pointer focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                    >
-                      <option value="GPT-4o Realtime">Spark (GPT-4o Realtime)</option>
-                      <option value="Claude 3.5 Sonnet">Claude 3.5 Sonnet</option>
-                      <option value="Elara (Fast)">Elara ($0.005/min)</option>
-                      <option value="Titan">Titan ($0.003/min)</option>
-                    </select>
-                  </div>
-
-                  {/* Language Selector */}
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Language</label>
-                    <select
-                      value={selectedLanguage}
-                      onChange={(e) => setSelectedLanguage(e.target.value)}
-                      className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-900 shadow-2xs cursor-pointer"
-                    >
-                      <option value="English (US)">US English (US)</option>
-                      <option value="English (UK)">British English (UK)</option>
-                      <option value="Spanish">Spanish (ES)</option>
-                      <option value="Hindi">Hindi (IN)</option>
-                    </select>
-                  </div>
-
-                  {/* Voice Selector button */}
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Voice</label>
-                    <button
-                      type="button"
-                      onClick={() => setShowVoiceModal(true)}
-                      className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-900 shadow-2xs hover:bg-slate-50 cursor-pointer"
-                    >
-                      <Volume2 className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>{selectedVoice}</span>
-                      <ChevronDown className="w-3 h-3 text-slate-400" />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 text-xs font-mono text-emerald-800 font-semibold bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>Dual-Channel Streaming Active</span>
-                </div>
-              </div>
-
-              {/* Greeting Builder: Speaks first */}
-              <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-slate-800">
-                    <div className="flex rounded-md bg-slate-100 p-0.5 border border-slate-200">
-                      <button
-                        type="button"
-                        onClick={() => setFirstSpeaker('agent')}
-                        className={`px-2 py-0.5 rounded text-xs font-bold ${
-                          firstSpeaker === 'agent' ? 'bg-white text-emerald-950 shadow-2xs' : 'text-slate-600'
-                        }`}
-                      >
-                        Agent
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setFirstSpeaker('caller')}
-                        className={`px-2 py-0.5 rounded text-xs font-bold ${
-                          firstSpeaker === 'caller' ? 'bg-white text-emerald-950 shadow-2xs' : 'text-slate-600'
-                        }`}
-                      >
-                        Caller
-                      </button>
-                    </div>
-                    <span>speaks first with</span>
-                    <div className="flex rounded-md bg-slate-100 p-0.5 border border-slate-200">
-                      <button
-                        type="button"
-                        onClick={() => setGreetingType('Static')}
-                        className={`px-2 py-0.5 rounded text-xs font-bold ${
-                          greetingType === 'Static' ? 'bg-white text-emerald-950 shadow-2xs' : 'text-slate-600'
-                        }`}
-                      >
-                        Static
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setGreetingType('Dynamic')}
-                        className={`px-2 py-0.5 rounded text-xs font-bold ${
-                          greetingType === 'Dynamic' ? 'bg-white text-emerald-950 shadow-2xs' : 'text-slate-600'
-                        }`}
-                      >
-                        Dynamic
-                      </button>
-                    </div>
-                    <span>message:</span>
-                  </div>
-                </div>
-
-                <textarea
-                  rows={2}
-                  value={greetingText}
-                  onChange={(e) => setGreetingText(e.target.value)}
-                  className="w-full p-2.5 rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                />
-              </div>
-
-              {/* Rich Markdown Prompt Editor */}
-              <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-3">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                  <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                    Agent Persona & Guardrails Prompt
-                  </span>
-                  <div className="flex items-center gap-1.5 text-[11px]">
-                    <span className="text-slate-400">Insert:</span>
-                    {['caller_name', 'reservation_date', 'room_type'].map((v) => (
-                      <button
-                        key={v}
-                        type="button"
-                        onClick={() => setSystemPrompt((prev) => `${prev} {{${v}}}`)}
-                        className="px-2 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-mono font-semibold border border-emerald-200"
-                      >
-                        + {`{{${v}}}`}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <textarea
-                  rows={14}
-                  value={systemPrompt}
-                  onChange={(e) => setSystemPrompt(e.target.value)}
-                  className="w-full p-3 font-mono text-xs leading-relaxed text-slate-800 bg-slate-50/70 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                />
-
-                <p className="text-[11px] text-slate-400">
-                  Type <code className="text-emerald-800 bg-emerald-50 px-1 rounded">{`{{variable}}`}</code> for contact attributes, or <code className="text-emerald-800 bg-emerald-50 px-1 rounded">//tool_name</code> to invoke integrations.
-                </p>
-              </div>
-            </div>
-          ) : (
-            /* ───────────────────────────────────────────────────────────── */
-            /* TAB 2: VISUAL DAG WORKFLOW CANVAS                             */
-            /* ───────────────────────────────────────────────────────────── */
-            <div className="flex-1 flex flex-col h-full bg-slate-50 relative overflow-hidden">
-              {/* Zoom Controls */}
-              <div className="absolute bottom-5 right-5 z-20 flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1 shadow-lg text-xs">
-                <button onClick={() => setZoomLevel(Math.max(50, zoomLevel - 10))} className="p-1.5 hover:bg-slate-100 rounded">-</button>
-                <span className="px-2 font-mono font-bold text-slate-700">{zoomLevel}%</span>
-                <button onClick={() => setZoomLevel(Math.min(150, zoomLevel + 10))} className="p-1.5 hover:bg-slate-100 rounded">+</button>
-              </div>
-
-              {/* Dotted Infinite Canvas */}
-              <div
-                className="flex-1 w-full h-full relative cursor-grab p-10 overflow-auto"
-                style={{
-                  backgroundImage: 'radial-gradient(#cbd5e1 1.2px, transparent 1.2px)',
-                  backgroundSize: '24px 24px',
-                  transform: `scale(${zoomLevel / 100})`,
-                  transformOrigin: '0 0',
-                }}
-              >
-                {/* SVG Connectors */}
-                <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ minWidth: '1200px', minHeight: '600px' }}>
-                  <path d="M 200 200 C 240 200, 240 140, 280 140" fill="none" stroke="#059669" strokeWidth="2.5" strokeDasharray="4 4" />
-                  <path d="M 500 140 C 540 140, 540 200, 580 200" fill="none" stroke="#059669" strokeWidth="2.5" />
-                  <path d="M 580 70 L 580 180" fill="none" stroke="#059669" strokeWidth="2.5" />
-                  <path d="M 800 200 C 850 200, 850 120, 900 120" fill="none" stroke="#059669" strokeWidth="2.5" />
-                  <path d="M 800 220 C 850 220, 850 280, 900 280" fill="none" stroke="#059669" strokeWidth="2.5" />
-                  <path d="M 580 240 L 580 350" fill="none" stroke="#059669" strokeWidth="2.5" strokeDasharray="4 4" />
-                </svg>
-
-                {/* Nodes */}
-                {workflowNodes.map((node) => {
-                  const isSelected = selectedNodeId === node.id;
-                  return (
-                    <div
-                      key={node.id}
-                      onClick={() => setSelectedNodeId(node.id)}
-                      style={{ transform: `translate(${node.x}px, ${node.y}px)` }}
-                      className={`absolute w-60 p-3 rounded-xl border bg-white shadow-xs transition-all cursor-pointer ${
-                        isSelected ? 'border-emerald-600 ring-2 ring-emerald-500/20 shadow-md scale-105' : 'border-slate-200 hover:border-slate-300'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 font-mono">
-                          {node.type}
-                        </span>
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                      </div>
-                      <h4 className="text-xs font-bold text-slate-900">{node.title}</h4>
-                      <p className="text-[11px] text-slate-500 font-mono mt-0.5 truncate">{node.subtitle}</p>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Bottom Drawer: Node Inspector */}
-              <div className="h-28 bg-white border-t border-slate-200 p-4 shrink-0 flex items-start justify-between z-20 shadow-lg">
-                <div className="max-w-xl">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-bold text-slate-900">{selectedNode.title}</span>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-50 text-emerald-900 font-semibold border border-emerald-200">
-                      {selectedNode.type.toUpperCase()}
+                    <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 text-[11px] font-bold border border-emerald-200">
+                      Carrier Integration
                     </span>
                   </div>
-                  <p className="text-xs text-slate-600">{selectedNode.details}</p>
+
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-semibold text-slate-800 block mb-1">Telephony Provider</label>
+                      <select
+                        value={telephonyProvider}
+                        onChange={(e) => setTelephonyProvider(e.target.value)}
+                        className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-900 focus:outline-none focus:border-emerald-600"
+                      >
+                        {TELEPHONY_OPTIONS.map((opt) => (
+                          <option key={opt.id} value={opt.id}>{opt.name}{opt.recommended ? ' · Recommended' : ''}</option>
+                        ))}
+                      </select>
+                      <p className="mt-1 text-[11px] text-slate-500">Carrier provider for phone networks and SIP trunks.</p>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-semibold text-slate-800 block mb-1">Escalation / Human Transfer Phone Number</label>
+                      <input
+                        type="text"
+                        value={escalationPhoneNumber}
+                        onChange={(e) => setEscalationPhoneNumber(e.target.value)}
+                        placeholder="e.g. +91 98765 43210 or +1 415 555 2671"
+                        className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-semibold text-slate-900 focus:outline-none focus:border-emerald-600"
+                      />
+                      <p className="mt-1 text-[11px] text-slate-500">Destination phone number to transfer caller upon human escalation request.</p>
+                    </div>
+                  </div>
                 </div>
-                <button
-                  onClick={() => toast.info(`Configuring node: ${selectedNode.title}`)}
-                  className="px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-semibold text-slate-700"
-                >
-                  Configure Node
-                </button>
-              </div>
+              )}
+
+
+
+              {/* SECTION: CALL DIRECTION & GREETING */}
+              {(activeSection === 'greetings') && (
+                <div className="space-y-5 animate-fade-in">
+                  <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-base font-bold text-slate-900">Call Direction & Greeting</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">Configure call direction and initial opening greetings.</p>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 text-[11px] font-bold border border-emerald-200">
+                      Step 1 Sync
+                    </span>
+                  </div>
+
+                  {/* Call Direction */}
+                  <div>
+                    <label className="text-xs font-semibold text-slate-800 block mb-1.5">Call Direction</label>
+                    <div className="grid grid-cols-3 gap-2 p-1 bg-slate-50 rounded-xl border border-slate-200">
+                      <button
+                        type="button"
+                        onClick={() => setCallDirection('inbound')}
+                        className={`py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                          callDirection === 'inbound' ? 'bg-white text-emerald-950 shadow-2xs border border-slate-200' : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        <PhoneIncoming className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Inbound only</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCallDirection('outbound')}
+                        className={`py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                          callDirection === 'outbound' ? 'bg-white text-emerald-950 shadow-2xs border border-slate-200' : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        <PhoneOutgoing className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Outbound only</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCallDirection('both')}
+                        className={`py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                          callDirection === 'both' ? 'bg-white text-emerald-950 shadow-2xs border border-slate-200' : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        <PhoneCall className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Both (2-Way)</span>
+                      </button>
+                    </div>
+                    <p className="mt-1 text-[11px] text-slate-500">
+                      {callDirection === 'inbound'
+                        ? 'Handles incoming calls from customers when they dial your assigned phone number.'
+                        : callDirection === 'outbound'
+                        ? 'Places proactive outbound calls to contacts, leads, or existing customers.'
+                        : 'Handles both incoming inquiries and places proactive outbound campaign calls.'}
+                    </p>
+                  </div>
+
+                  {/* Separate Inbound & Outbound Greetings */}
+                  <div className="space-y-4">
+                    {(callDirection === 'inbound' || callDirection === 'both') && (
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-xs font-bold text-slate-800">Inbound Call Greeting</label>
+                          <span className="text-[10px] text-slate-400">Spoken when caller dials into this agent</span>
+                        </div>
+                        <textarea
+                          rows={3}
+                          value={inboundGreeting}
+                          onChange={(e) => setInboundGreeting(e.target.value)}
+                          placeholder="e.g. Hello, thanks for calling. How can I help you today?"
+                          className="w-full p-3 rounded-xl border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-emerald-600"
+                        />
+                      </div>
+                    )}
+
+                    {(callDirection === 'outbound' || callDirection === 'both') && (
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-xs font-bold text-slate-800">Outbound Call Greeting</label>
+                          <span className="text-[10px] text-slate-400">Spoken when customer answers outbound dialer</span>
+                        </div>
+                        <textarea
+                          rows={3}
+                          value={outboundGreeting}
+                          onChange={(e) => setOutboundGreeting(e.target.value)}
+                          placeholder="e.g. Hi, this is an automated call regarding..."
+                          className="w-full p-3 rounded-xl border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-emerald-600"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* SECTION 6: KNOWLEDGE BASE */}
+              {(activeSection === 'kb') && (
+                <div className="space-y-5 animate-fade-in">
+                  <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-base font-bold text-slate-900">Knowledge Base Integration</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">Select workspace documents and vector databases for grounding agent answers.</p>
+                    </div>
+                    <Link
+                      to="/knowledge"
+                      className="px-3 py-1 rounded-lg bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200 hover:bg-emerald-100 flex items-center gap-1"
+                    >
+                      <span>Manage KBs</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </Link>
+                  </div>
+
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
+                    <input
+                      type="text"
+                      value={kbSearch}
+                      onChange={(e) => setKbSearch(e.target.value)}
+                      placeholder="Search available knowledge bases..."
+                      className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-xs"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    {filteredKnowledgeBases.length === 0 ? (
+                      <div className="p-6 rounded-xl border border-dashed border-slate-200 text-center text-xs text-slate-500">
+                        No knowledge bases found. Create one in the Knowledge Base section.
+                      </div>
+                    ) : (
+                      filteredKnowledgeBases.map((kb) => {
+                        const isChecked = selectedKbIds.includes(kb.id);
+                        return (
+                          <div
+                            key={kb.id}
+                            onClick={() => toggleKb(kb.id)}
+                            className={`p-3.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
+                              isChecked ? 'border-emerald-600 bg-emerald-50/30' : 'border-slate-200 bg-white hover:bg-slate-50'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => toggleKb(kb.id)}
+                                className="w-4 h-4 rounded text-emerald-600 accent-emerald-600"
+                              />
+                              <div className="min-w-0">
+                                <h4 className="text-xs font-bold text-slate-900 truncate">{kb.name}</h4>
+                                <p className="text-[11px] text-slate-500 truncate">{kb.description || 'Vector knowledge repository'}</p>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-600">
+                              Linked
+                            </span>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* SECTION 7: TOOLS & INTEGRATIONS */}
+              {(activeSection === 'tools') && (
+                <div className="space-y-5 animate-fade-in">
+                  <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-base font-bold text-slate-900">Connected Tools & Integrations</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">Enable CRM tools, calendars, and system actions available to this agent during live calls.</p>
+                    </div>
+                    <Link
+                      to="/integrations"
+                      className="px-3 py-1 rounded-lg bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200 hover:bg-emerald-100 flex items-center gap-1"
+                    >
+                      <span>Manage Integrations</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </Link>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    {integrations.length === 0 ? (
+                      <div className="p-6 rounded-xl border border-dashed border-slate-200 text-center text-xs text-slate-500">
+                        No connected integrations found in workspace.
+                      </div>
+                    ) : (
+                      integrations.map((tool) => {
+                        const isEnabled = selectedTools.includes(tool.id);
+                        return (
+                          <div
+                            key={tool.id}
+                            className={`p-3.5 rounded-xl border flex items-center justify-between transition-all ${
+                              isEnabled ? 'border-emerald-600 bg-emerald-50/20' : 'border-slate-200 bg-white'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-700">
+                                <Boxes className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <h4 className="text-xs font-bold text-slate-900">{tool.name}</h4>
+                                <p className="text-[11px] text-slate-500">{tool.description}</p>
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => toggleTool(tool.id)}
+                              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                                isEnabled ? 'bg-emerald-950 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                              }`}
+                            >
+                              {isEnabled ? 'Enabled' : 'Disabled'}
+                            </button>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
+
+
+
+
             </div>
-          )}
         </div>
 
         {/* ── RIGHT PANEL: REAL-TIME WEBRTC SIMULATOR / TEST SANDBOX ── */}
-        <aside className={`${mobileStudioTab === 'preview' ? 'flex' : 'hidden'} xl:flex w-full xl:w-88 2xl:w-96 bg-white border-l border-slate-200 flex flex-col shrink-0 z-20 overflow-y-auto`}>
+        <aside
+          id="studio-simulator-panel"
+          className={`${mobileStudioTab === 'preview' ? 'flex' : 'hidden'} 2xl:flex w-full 2xl:w-88 bg-white border-l border-slate-200 flex flex-col shrink-0 z-20 overflow-y-auto`}
+        >
           {/* Header & Tabs */}
           <div className="h-12 border-b border-slate-200 px-4 flex items-center justify-between bg-slate-50">
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileStudioTab('editor');
+                  if (location.search.includes('tab=')) {
+                    navigate(`/agents/${id}`, { replace: true });
+                  }
+                }}
+                className="2xl:hidden flex items-center gap-1 text-xs font-bold text-emerald-800 hover:text-emerald-950 bg-white border border-slate-200 hover:bg-slate-50 px-2.5 py-1 rounded-md transition-colors cursor-pointer mr-1 shadow-2xs"
+                title="Back to Configuration Form"
+              >
+                <ArrowLeft className="w-3.5 h-3.5 text-emerald-700" />
+                <span>Configure Form</span>
+              </button>
               <Headphones className="w-4 h-4 text-emerald-600" />
               <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">Preview agent</span>
             </div>
@@ -1321,130 +1489,85 @@ You are Maya, an ultra-luxury resort concierge at Grand Horizon Resort. Your goa
           </form>
         </aside>
 
-        {/* ── SLIDE-OUT AI COMPOSER DRAWER ── */}
-        {isComposerOpen && (
-          <div className="w-80 bg-white border-l border-slate-200 shadow-xl flex flex-col shrink-0 animate-slide-left z-30">
-            <div className="h-12 border-b border-slate-200 px-4 flex items-center justify-between bg-slate-50">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-emerald-600" />
-                <span className="text-xs font-bold text-slate-900">AI Composer Copilot</span>
-              </div>
-              <button onClick={() => setIsComposerOpen(false)} className="text-slate-400 hover:text-slate-600">
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            <div className="p-4 flex-1 overflow-y-auto space-y-3 text-xs">
-              <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-950 leading-relaxed">
-                <strong className="block mb-1">What would you like to refine?</strong>
-                Ask me to adjust Maya's tone, write strict compliance guardrails, or attach a booking tool schema.
-              </div>
-            </div>
-
-            <form onSubmit={handleComposerSubmit} className="p-3 border-t border-slate-200 space-y-2">
-              <textarea
-                rows={3}
-                value={composerInput}
-                onChange={(e) => setComposerInput(e.target.value)}
-                placeholder="e.g. Add a guardrail preventing Maya from giving refunds directly..."
-                className="w-full p-2.5 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              />
-              <button
-                type="submit"
-                disabled={isComposerLoading || !composerInput.trim()}
-                className="w-full py-2 bg-emerald-950 hover:bg-emerald-900 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs"
-              >
-                {isComposerLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                <span>Update Agent Prompt</span>
-              </button>
-            </form>
-          </div>
-        )}
       </div>
 
-      {/* ── MODAL: CHOOSE VOICE (Discover vs My Voices) ── */}
+      {/* ── MODAL: CHOOSE VOICE ── */}
       {showVoiceModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full border border-slate-200 shadow-2xl p-5 animate-scale-in space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
-                <h3 className="text-base font-bold text-slate-900">Choose Voice</h3>
-                <p className="text-xs text-slate-500">Select the acoustic timbre that best suits your use case.</p>
+                <h3 className="text-base font-bold text-slate-900">Choose Voice ({ttsProvider})</h3>
+                <p className="text-xs text-slate-500">Voices available for your selected provider.</p>
               </div>
               <button onClick={() => setShowVoiceModal(false)} className="text-slate-400 hover:text-slate-600 p-1">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Search & Collection */}
-            <div className="flex items-center gap-2">
-              <div className="flex-1 relative">
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
-                <input
-                  type="text"
-                  placeholder="Search voices..."
-                  value={voiceSearch}
-                  onChange={(e) => setVoiceSearch(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-lg text-xs"
-                />
-              </div>
-              <select
-                value={voiceFilterCategory}
-                onChange={(e) => setVoiceFilterCategory(e.target.value)}
-                className="px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-700 font-semibold"
-              >
-                <option value="All collections">All collections</option>
-                <option value="Hospitality">Hospitality</option>
-                <option value="Healthcare">Healthcare</option>
-                <option value="Executive">Executive</option>
-              </select>
+            {/* Search */}
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+              <input
+                type="text"
+                placeholder="Search voices..."
+                value={voiceSearch}
+                onChange={(e) => setVoiceSearch(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-lg text-xs"
+              />
             </div>
 
             {/* Voices List */}
-            <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-              {AVAILABLE_VOICES.map((v) => (
-                <div
-                  key={v.id}
-                  onClick={() => {
-                    setSelectedVoice(`${v.name} (${v.provider})`);
-                    setShowVoiceModal(false);
-                    toast.success(`Selected voice "${v.name}" (${v.provider}).`);
-                  }}
-                  className="p-3 rounded-xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/40 flex items-center justify-between transition-all cursor-pointer group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-emerald-100 text-emerald-900 font-bold flex items-center justify-center text-xs">
-                      {v.name.slice(0, 1)}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-900 text-xs">{v.name}</span>
-                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 font-semibold">
-                          {v.gender}
-                        </span>
-                        <span className="text-[10px] text-slate-400">{v.accent}</span>
-                      </div>
-                      <p className="text-[11px] text-slate-500 mt-0.5">{v.tags}</p>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if ('speechSynthesis' in window) {
-                        window.speechSynthesis.cancel();
-                        const utterance = new SpeechSynthesisUtterance(`Hello, this is ${v.name}. Ready to assist.`);
-                        window.speechSynthesis.speak(utterance);
-                      }
+            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+              {(voicesForProvider.length > 0 ? voicesForProvider : AVAILABLE_VOICES)
+                .filter((v) => !voiceSearch || v.name.toLowerCase().includes(voiceSearch.toLowerCase()) || v.language?.toLowerCase().includes(voiceSearch.toLowerCase()))
+                .map((v) => (
+                  <div
+                    key={v.id}
+                    onClick={() => {
+                      setSelectedVoiceId(v.id);
+                      setSelectedVoiceName(v.name);
+                      setShowVoiceModal(false);
+                      toast.success(`Selected voice "${v.name}".`);
                     }}
-                    className="p-2 rounded-lg text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 transition-all"
-                    title="Play Preview"
+                    className={`p-3 rounded-xl border flex items-center justify-between transition-all cursor-pointer ${
+                      selectedVoiceId === v.id ? 'border-emerald-600 bg-emerald-50/50' : 'border-slate-200 hover:border-emerald-500 hover:bg-slate-50'
+                    }`}
                   >
-                    <Play className="w-3.5 h-3.5 fill-current" />
-                  </button>
-                </div>
-              ))}
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-emerald-100 text-emerald-900 font-bold flex items-center justify-center text-xs">
+                        {v.name.slice(0, 1)}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-900 text-xs">{v.name}</span>
+                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 font-semibold">
+                            {v.gender}
+                          </span>
+                          {v.accent && <span className="text-[10px] text-slate-400">{v.accent}</span>}
+                        </div>
+                        <p className="text-[11px] text-slate-500 mt-0.5">{v.language} • {v.provider}</p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if ('speechSynthesis' in window) {
+                          window.speechSynthesis.cancel();
+                          const utterance = new SpeechSynthesisUtterance(`Hello, this is ${v.name}. Ready to assist you.`);
+                          utterance.rate = speakingRate;
+                          window.speechSynthesis.speak(utterance);
+                        }
+                      }}
+                      className="p-2 rounded-lg text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 transition-all"
+                      title="Play Preview"
+                    >
+                      <Play className="w-3.5 h-3.5 fill-current" />
+                    </button>
+                  </div>
+                ))}
             </div>
           </div>
         </div>
@@ -1492,6 +1615,8 @@ You are Maya, an ultra-luxury resort concierge at Grand Horizon Resort. Your goa
           </div>
         </div>
       )}
+
+
     </div>
   );
 };

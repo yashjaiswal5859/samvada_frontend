@@ -6,9 +6,9 @@ const steps = [
   {
     number: '01',
     title: 'Draft an agent',
-    description: 'Start from a template or describe the job in your own words. We’ll prefill a useful first draft.',
-    action: 'Create an agent draft',
-    to: '/home?create=1',
+    description: 'Open Agents to write a brief, connect approved knowledge, and set guardrails for your voice agent.',
+    action: 'Open Voice Agents',
+    to: '/agents?create=1',
     icon: Bot,
   },
   {

@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { getOnboardingRoute } from '../../utils/navigation';
+import { LANDING_HOW_IT_WORKS, LANDING_TIMELINE } from '../../utils/constants';
 
 /* ──────────────────────────────────────────────────────────────────────── */
 /*  DATA                                                                    */
@@ -111,34 +112,18 @@ const INDUSTRIES = [
   }
 ];
 
-const HOW_IT_WORKS = [
-  {
-    step: '01',
-    title: 'Design your agent',
-    desc: 'Use the visual composer to define conversation flows, set the voice personality, and connect your tools — no code required.',
-    icon: <Layers className="w-6 h-6" />
-  },
-  {
-    step: '02',
-    title: 'Test with simulations',
-    desc: 'Run hundreds of simulated calls against real scenarios. Catch edge cases before a single real caller hears your agent.',
-    icon: <FlaskConical className="w-6 h-6" />
-  },
-  {
-    step: '03',
-    title: 'Go live in minutes',
-    desc: 'Connect a phone number, press deploy. Monitor every call with real-time transcripts and analytics from day one.',
-    icon: <Rocket className="w-6 h-6" />
-  }
+const HOW_IT_WORKS_ICONS = [
+  <Layers className="w-6 h-6" />,
+  <FlaskConical className="w-6 h-6" />,
+  <Rocket className="w-6 h-6" />
 ];
 
-const TIMELINE = [
-  { day: 'Day 1', title: 'Discovery & scoping', desc: 'Review call types, agree on scope and success criteria, plan system integrations.' },
-  { day: 'Day 7', title: 'Build phase', desc: 'Set up voice personality, design deterministic flows, write the first test suite.' },
-  { day: 'Day 14', title: 'End-to-end testing', desc: 'Full test calls from greeting to wrap-up. Backend actions verified.' },
-  { day: 'Day 21', title: 'Dry run & guardrails', desc: 'Enterprise test cases pass. Safety locks, handoff rules, and final review.' },
-  { day: 'Day 30', title: 'Production launch', desc: 'Live on real phone lines. Daily call review dashboard and ongoing optimization.' }
-];
+const HOW_IT_WORKS = LANDING_HOW_IT_WORKS.map((item, idx) => ({
+  ...item,
+  icon: HOW_IT_WORKS_ICONS[idx],
+}));
+
+const TIMELINE = LANDING_TIMELINE;
 
 /* ──────────────────────────────────────────────────────────────────────── */
 /*  COMPONENT                                                               */

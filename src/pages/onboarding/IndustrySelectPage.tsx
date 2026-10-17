@@ -3,34 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { saveIndustries } from '../../api/onboarding';
 import { Loader2, ArrowRight } from 'lucide-react';
-
-const ALL_INDUSTRIES = [
-  'Healthcare & Medical',
-  'Home & Trade Services',
-  'Real Estate & Property Management',
-  'Retail & E-commerce',
-  'Insurance',
-  'Banking & Financial Services',
-  'Legal Services',
-  'Automotive',
-  'Beauty, Salon & Spa',
-  'Restaurants & Food Service',
-  'Hospitality & Travel',
-  'Education & Training',
-  'Fitness & Wellness',
-  'Technology & SaaS',
-  'Professional Services',
-  'Logistics & Transportation',
-  'Staffing & Recruitment',
-  'Utilities & Telecom',
-  'Veterinary & Pet Care',
-  'Manufacturing & Industrial',
-  'Government & Public Sector',
-  'Non-Profit & Community',
-  'Media & Entertainment',
-  'General / Cross-industry',
-  'Others',
-];
+import { ALL_INDUSTRIES } from '../../utils/constants';
 
 export const IndustrySelectPage: React.FC = () => {
   const [selected, setSelected] = useState<string[]>([]);

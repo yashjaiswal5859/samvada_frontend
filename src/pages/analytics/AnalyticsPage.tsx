@@ -35,140 +35,13 @@ import {
 } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
 import { useWorkspace } from '../../contexts/WorkspaceContext';
-
-interface AgentPerformance {
-  rank: number;
-  id: string;
-  name: string;
-  role: string;
-  avatar: string;
-  model: string;
-  voice: string;
-  totalCalls: number;
-  avgDuration: string;
-  csat: number;
-  resolutionRate: number;
-  p50Latency: number;
-  costPerCall: string;
-}
-
-const AGENT_LEADERBOARD: AgentPerformance[] = [
-  {
-    rank: 1,
-    id: 'agent-maya-hotel',
-    name: 'Maya',
-    role: 'Luxury Hospitality Concierge',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&h=200&q=80',
-    model: 'GPT-4o Realtime',
-    voice: 'Cartesia Sonic (Warm)',
-    totalCalls: 9420,
-    avgDuration: '2m 45s',
-    csat: 4.94,
-    resolutionRate: 94.2,
-    p50Latency: 245,
-    costPerCall: '$0.11',
-  },
-  {
-    rank: 2,
-    id: 'agent-david-clinic',
-    name: 'David',
-    role: 'Clinical Triage & Scheduling',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&h=200&q=80',
-    model: 'Claude 3.5 Sonnet',
-    voice: 'ElevenLabs Turbo (Reassuring)',
-    totalCalls: 6810,
-    avgDuration: '3m 12s',
-    csat: 4.88,
-    resolutionRate: 91.5,
-    p50Latency: 285,
-    costPerCall: '$0.13',
-  },
-  {
-    rank: 3,
-    id: 'agent-liam-sdr',
-    name: 'Liam',
-    role: 'Enterprise SDR & Discovery',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&h=200&q=80',
-    model: 'Claude 3.5 Sonnet',
-    voice: 'PlayHT 2.0 (Authoritative)',
-    totalCalls: 4320,
-    avgDuration: '4m 05s',
-    csat: 4.82,
-    resolutionRate: 88.4,
-    p50Latency: 290,
-    costPerCall: '$0.16',
-  },
-  {
-    rank: 4,
-    id: 'agent-elena-claims',
-    name: 'Elena',
-    role: 'First Notice of Loss Claims',
-    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&h=200&q=80',
-    model: 'GPT-4o Realtime',
-    voice: 'Azure Neural HD (Empathetic)',
-    totalCalls: 2150,
-    avgDuration: '3m 50s',
-    csat: 4.86,
-    resolutionRate: 89.0,
-    p50Latency: 260,
-    costPerCall: '$0.15',
-  },
-  {
-    rank: 5,
-    id: 'agent-marcus-banking',
-    name: 'Marcus',
-    role: 'Card Fraud & Disputes',
-    avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=200&h=200&q=80',
-    model: 'Llama 3.3 70B',
-    voice: 'ElevenLabs Turbo (Calm)',
-    totalCalls: 1120,
-    avgDuration: '2m 10s',
-    csat: 4.79,
-    resolutionRate: 86.8,
-    p50Latency: 310,
-    costPerCall: '$0.09',
-  },
-  {
-    rank: 6,
-    id: 'agent-priya-retail',
-    name: 'Priya',
-    role: 'Omnichannel Order Tracking',
-    avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=200&h=200&q=80',
-    model: 'GPT-4o Realtime',
-    voice: 'Cartesia Sonic (Energetic)',
-    totalCalls: 700,
-    avgDuration: '1m 55s',
-    csat: 4.81,
-    resolutionRate: 92.0,
-    p50Latency: 250,
-    costPerCall: '$0.08',
-  },
-];
-
-const TOPIC_INTENTS = [
-  { intent: 'Reservation Booking & Room Upgrade', volumePct: 34, resolutionPct: 96, avgTime: '2m 15s', trend: '+14%' },
-  { intent: 'Prescription Refill & Clinic Schedule', volumePct: 24, resolutionPct: 92, avgTime: '3m 05s', trend: '+8%' },
-  { intent: 'SaaS Demo Qualification & BANT Routing', volumePct: 18, resolutionPct: 88, avgTime: '4m 10s', trend: '+22%' },
-  { intent: 'First Notice of Loss Auto Claims', volumePct: 14, resolutionPct: 84, avgTime: '3m 50s', trend: '+3%' },
-  { intent: 'Billing Inquiry & Cancellation Prevention', volumePct: 10, resolutionPct: 79, avgTime: '3m 30s', trend: '-2%' },
-];
-
-const DAILY_TREND_DATA = [
-  { date: 'Mon', calls: 3240, completed: 3080, escalated: 160 },
-  { date: 'Tue', calls: 3950, completed: 3740, escalated: 210 },
-  { date: 'Wed', calls: 4420, completed: 4210, escalated: 210 },
-  { date: 'Thu', calls: 4180, completed: 3960, escalated: 220 },
-  { date: 'Fri', calls: 4690, completed: 4450, escalated: 240 },
-  { date: 'Sat', calls: 2120, completed: 2010, escalated: 110 },
-  { date: 'Sun', calls: 1920, completed: 1830, escalated: 90 },
-];
-
-const HOURLY_HEATMAP = [
-  { hour: '00:00', load: 12 }, { hour: '02:00', load: 8 }, { hour: '04:00', load: 6 },
-  { hour: '06:00', load: 24 }, { hour: '08:00', load: 68 }, { hour: '10:00', load: 95 },
-  { hour: '12:00', load: 88 }, { hour: '14:00', load: 98 }, { hour: '16:00', load: 92 },
-  { hour: '18:00', load: 74 }, { hour: '20:00', load: 45 }, { hour: '22:00', load: 28 },
-];
+import {
+  AgentPerformance,
+  AGENT_LEADERBOARD,
+  TOPIC_INTENTS,
+  DAILY_TREND_DATA,
+  HOURLY_HEATMAP,
+} from '../../utils/constants';
 
 export const AnalyticsPage: React.FC = () => {
   const toast = useToast();
@@ -335,7 +208,7 @@ export const AnalyticsPage: React.FC = () => {
       </div>
 
       {/* ── Top 5 Executive Metric KPI Strip ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+      <div className="grid grid-cols-1 min-[480px]:grid-cols-2 lg:grid-cols-5 gap-3.5">
         {/* Metric 1: Total Volume */}
         <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs relative overflow-hidden group">
           <div className="flex items-center justify-between">
@@ -445,7 +318,7 @@ export const AnalyticsPage: React.FC = () => {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-bold text-slate-900">Conversational Volume & Concurrency Trends</h3>
+                  <h2 className="text-sm font-bold text-slate-900">Conversational Volume & Concurrency Trends</h2>
                   <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
                     Live Cluster
                   </span>
@@ -600,7 +473,7 @@ export const AnalyticsPage: React.FC = () => {
             <div>
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-bold text-slate-900">Sentiment & Intent Outcomes</h3>
+                  <h2 className="text-sm font-bold text-slate-900">Sentiment & Intent Outcomes</h2>
                 </div>
                 <button
                   onClick={() => toast.success('Sentiment settings.')}
@@ -648,9 +521,7 @@ export const AnalyticsPage: React.FC = () => {
 
               {/* Call Resolution Channels */}
               <div className="mt-6 pt-4 border-t border-slate-100 space-y-2.5">
-                <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                  Call Resolution Pipeline
-                </h4>
+                <h3 className="text-xs font-semibold text-slate-600">Call resolution pipeline</h3>
                 <div className="flex items-center justify-between text-xs p-2.5 rounded-lg bg-emerald-50/70 border border-emerald-200">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
@@ -691,7 +562,7 @@ export const AnalyticsPage: React.FC = () => {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-slate-900">Voice Agent Performance Leaderboard</h3>
+                <h2 className="text-sm font-bold text-slate-900">Voice Agent Performance Leaderboard</h2>
                 <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
                   6 Production Agents
                 </span>
@@ -792,7 +663,7 @@ export const AnalyticsPage: React.FC = () => {
                     <td className="py-3 px-3 text-center">
                       <button
                         onClick={() => navigate(`/agents/${agent.id}`)}
-                        className="px-2.5 py-1 rounded-md text-[11px] font-semibold text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 shadow-2xs transition-all active:scale-95"
+                        className="px-2.5 py-1 rounded-md text-xs font-semibold text-emerald-800 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 transition-all"
                       >
                         Studio
                       </button>
@@ -811,7 +682,7 @@ export const AnalyticsPage: React.FC = () => {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-slate-900">Top Caller Intents & Resolution Breakdown</h3>
+                <h2 className="text-sm font-bold text-slate-900">Top Caller Intents & Resolution Breakdown</h2>
                 <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
                   AI Intent Extraction
                 </span>

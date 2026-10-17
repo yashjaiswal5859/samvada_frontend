@@ -35,146 +35,7 @@ import { formatDuration } from '../../utils/formatters';
 import { getCallRecords } from '../../api/calls';
 import { getAnalyticsSummary, EMPTY_ANALYTICS } from '../../api/analytics';
 import { AnalyticsSummary } from '../../types';
-
-interface TranscriptItem {
-  speaker: 'agent' | 'caller';
-  text: string;
-  timestamp: string;
-  latencyMs?: number;
-}
-
-interface CallDetail {
-  id: string;
-  callerName: string;
-  callerPhone: string;
-  direction: 'inbound' | 'outbound';
-  agentName: string;
-  agentAvatar: string;
-  model: string;
-  voice: string;
-  durationSec: number;
-  turnCount: number;
-  p50Latency: number;
-  sentiment: 'positive' | 'neutral' | 'escalated';
-  summary: string;
-  date: string;
-  extractedData: Record<string, string>;
-  transcript: TranscriptItem[];
-}
-
-const MOCK_CALLS: CallDetail[] = [
-  {
-    id: 'call-101',
-    callerName: 'Evelyn Reed',
-    callerPhone: '+1 (415) 304-9821',
-    direction: 'inbound',
-    agentName: 'Maya (Luxury Hospitality)',
-    agentAvatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80',
-    model: 'GPT-4o Realtime',
-    voice: 'Cartesia Sonic (British Luxury)',
-    durationSec: 194,
-    turnCount: 8,
-    p50Latency: 185,
-    sentiment: 'positive',
-    summary: 'Guest confirmed 3-night Oceanfront Suite reservation and reserved an 8:00 PM table on the terrace for dinner.',
-    date: 'Oct 06, 2026 • 21:42',
-    extractedData: {
-      guest_name: 'Evelyn Reed',
-      room_number: 'Penthouse 402',
-      dining_time: '20:00 EST',
-      party_size: '2 guests',
-      special_request: 'Gluten-free menu requested',
-      resolution_status: 'Fully Resolved',
-    },
-    transcript: [
-      { speaker: 'agent', text: 'Good evening. Welcome to the Grand Horizon Resort. My name is Maya. How may I orchestrate your stay today?', timestamp: '00:01', latencyMs: 175 },
-      { speaker: 'caller', text: 'Hi Maya, I have an upcoming reservation under Evelyn Reed for tomorrow and wanted to book dinner at the terrace.', timestamp: '00:06' },
-      { speaker: 'agent', text: 'Certainly, Ms. Reed! I have located your Penthouse Suite reservation. Would 8:00 PM suit your party of two for terrace dining?', timestamp: '00:11', latencyMs: 182 },
-      { speaker: 'caller', text: '8:00 PM is perfect, and please note a gluten-free menu for one guest.', timestamp: '00:17' },
-      { speaker: 'agent', text: 'With pleasure. I have locked in your 8:00 PM reservation with dietary notes dispatched directly to Executive Chef Laurent. A confirmation SMS is on its way.', timestamp: '00:24', latencyMs: 190 },
-    ],
-  },
-  {
-    id: 'call-102',
-    callerName: 'Arthur Vance',
-    callerPhone: '+1 (212) 590-4102',
-    direction: 'inbound',
-    agentName: 'David (Clinical Triage)',
-    agentAvatar: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=150&q=80',
-    model: 'Claude 3.5 Sonnet',
-    voice: 'ElevenLabs Turbo v2.5 (Gentle Clinical)',
-    durationSec: 245,
-    turnCount: 10,
-    p50Latency: 210,
-    sentiment: 'neutral',
-    summary: 'Patient scheduled preventive cardiology intake screening with Dr. Henderson following routine referral.',
-    date: 'Oct 06, 2026 • 20:15',
-    extractedData: {
-      patient_dob: '1984-06-14',
-      clinic: 'Providence Cardiology',
-      physician: 'Dr. Henderson',
-      appointment_slot: 'Oct 14, 10:30 AM',
-      insurance_verified: 'BlueCross BlueShield Tier 1',
-    },
-    transcript: [
-      { speaker: 'agent', text: 'Hello, this is David with Providence Health. I can help you schedule your appointment or securely update intake records. How may I assist you today?', timestamp: '00:01', latencyMs: 205 },
-      { speaker: 'caller', text: 'Hi, I received a referral from my primary physician for a cardiology consult and need to schedule an appointment.', timestamp: '00:07' },
-      { speaker: 'agent', text: 'I would be happy to coordinate that for you. May I verify your date of birth for patient verification?', timestamp: '00:12', latencyMs: 212 },
-    ],
-  },
-  {
-    id: 'call-103',
-    callerName: 'Marcus Sterling',
-    callerPhone: '+1 (312) 802-9934',
-    direction: 'outbound',
-    agentName: 'Liam (Enterprise SDR)',
-    agentAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80',
-    model: 'Claude 3.5 Sonnet',
-    voice: 'PlayHT 2.0 (Executive Cadence)',
-    durationSec: 310,
-    turnCount: 12,
-    p50Latency: 195,
-    sentiment: 'positive',
-    summary: 'Prospect qualified for 50-agent enterprise tier. Booked product architecture demonstration with VP of Engineering.',
-    date: 'Oct 06, 2026 • 18:30',
-    extractedData: {
-      company: 'Sterling Logistics',
-      telephony_trunk: 'Twilio SIP Trunking',
-      estimated_monthly_minutes: '120,000 min',
-      demo_scheduled: 'Thursday, 2:00 PM EST',
-    },
-    transcript: [
-      { speaker: 'agent', text: 'Hello Marcus! This is Liam from CloudScale Systems following up on your team\'s voice AI benchmark request. Do you have two minutes to discuss your telephony volume?', timestamp: '00:01', latencyMs: 190 },
-      { speaker: 'caller', text: 'Hi Liam, yes, we are evaluating automated voice dispatchers for 100k+ minutes a month.', timestamp: '00:08' },
-    ],
-  },
-  {
-    id: 'call-104',
-    callerName: 'Carlos Gomez',
-    callerPhone: '+1 (786) 431-2910',
-    direction: 'inbound',
-    agentName: 'Elena (Fintech Resolution)',
-    agentAvatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=150&q=80',
-    model: 'DeepSeek-V3',
-    voice: 'PlayHT 2.0 (Empathic Firm)',
-    durationSec: 160,
-    turnCount: 6,
-    p50Latency: 225,
-    sentiment: 'positive',
-    summary: 'Structured flexible 3-month payment plan for past-due account; first installment scheduled.',
-    date: 'Oct 06, 2026 • 16:10',
-    extractedData: {
-      account_id: 'APX-98214',
-      installment_plan: '$150 / month x 3',
-      payment_method: 'ACH Direct Debit',
-      compliance_disclosure: 'FCRA Compliant Confirmed',
-    },
-    transcript: [
-      { speaker: 'agent', text: 'Hello, this is Elena on behalf of Apex Financial regarding your account update. I can assist you with flexible, confidential payment options today.', timestamp: '00:01', latencyMs: 220 },
-      { speaker: 'caller', text: 'Yes, I wanted to pay half now and split the rest over the next two months.', timestamp: '00:07' },
-    ],
-  },
-];
+import { CallDetail, TranscriptItem } from '../../utils/constants';
 
 export const CallHistoryPage: React.FC = () => {
   const navigate = useNavigate();
@@ -294,7 +155,7 @@ export const CallHistoryPage: React.FC = () => {
             <span>/</span>
             <span className="text-slate-800 font-semibold">{currentWorkspace.name}</span>
             <span className="text-slate-400">•</span>
-            <span className="text-emerald-700 font-bold">Observability & Telemetry</span>
+            <span className="text-emerald-700 font-bold">Call History</span>
           </div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
             Conversations & Call Logs
@@ -396,6 +257,7 @@ export const CallHistoryPage: React.FC = () => {
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
+              aria-label="Search call logs"
               placeholder="Filter by customer, phone, keywords (e.g. 'refund', 'table reservation'), or agent persona..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -458,7 +320,7 @@ export const CallHistoryPage: React.FC = () => {
                   <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 mx-auto mb-3">
                     <Phone className="w-6 h-6 text-slate-400" />
                   </div>
-                  <h3 className="text-sm font-bold text-slate-800">No Call Sessions Recorded Yet</h3>
+                  <h2 className="text-sm font-bold text-slate-800">No call sessions recorded yet</h2>
                   <p className="text-xs text-slate-500 max-w-md mx-auto mt-1 leading-relaxed">
                     {searchQuery || sentimentFilter !== 'All Sentiments' || directionFilter !== 'All Directions'
                       ? 'No calls match your active search or filter criteria. Try clearing filters.'

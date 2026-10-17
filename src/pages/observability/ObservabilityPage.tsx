@@ -25,90 +25,7 @@ import { useWorkspace } from '../../contexts/WorkspaceContext';
 import { getAnalyticsSummary, EMPTY_ANALYTICS } from '../../api/analytics';
 import { getLiveCalls, getCallRecords } from '../../api/calls';
 import { AnalyticsSummary } from '../../types';
-
-interface SessionTelemetry {
-  sessionId: string;
-  caller: string;
-  agent: string;
-  model: string;
-  voiceProvider: string;
-  sttLatency: number;
-  llmTtft: number;
-  ttsLatency: number;
-  totalV2V: number;
-  bargeIns: number;
-  packetLoss: string;
-  jitter: string;
-  disconnectCode: string;
-  status: 'active' | 'completed';
-}
-
-const MOCK_SESSIONS: SessionTelemetry[] = [
-  {
-    sessionId: 'sess-8921-a',
-    caller: 'Evelyn Reed (+1 415-304-9821)',
-    agent: 'Maya (Luxury Hospitality)',
-    model: 'GPT-4o Realtime',
-    voiceProvider: 'Cartesia Sonic',
-    sttLatency: 68,
-    llmTtft: 88,
-    ttsLatency: 94,
-    totalV2V: 250,
-    bargeIns: 0,
-    packetLoss: '0.00%',
-    jitter: '2.1ms',
-    disconnectCode: 'SIP 200 OK',
-    status: 'completed',
-  },
-  {
-    sessionId: 'sess-8922-b',
-    caller: 'Arthur Vance (+1 212-590-4102)',
-    agent: 'David (Clinical Triage)',
-    model: 'Claude 3.5 Sonnet',
-    voiceProvider: 'ElevenLabs Turbo',
-    sttLatency: 74,
-    llmTtft: 112,
-    ttsLatency: 104,
-    totalV2V: 290,
-    bargeIns: 1,
-    packetLoss: '0.01%',
-    jitter: '3.4ms',
-    disconnectCode: 'SIP 200 OK',
-    status: 'completed',
-  },
-  {
-    sessionId: 'sess-8923-c',
-    caller: 'Marcus Sterling (+1 312-802-9934)',
-    agent: 'Liam (Enterprise SDR)',
-    model: 'Claude 3.5 Sonnet',
-    voiceProvider: 'PlayHT 2.0',
-    sttLatency: 70,
-    llmTtft: 98,
-    ttsLatency: 110,
-    totalV2V: 278,
-    bargeIns: 2,
-    packetLoss: '0.00%',
-    jitter: '1.8ms',
-    disconnectCode: 'IN_PROGRESS',
-    status: 'active',
-  },
-  {
-    sessionId: 'sess-8924-d',
-    caller: 'Elena Vasquez (+1 786-431-2910)',
-    agent: 'Elena (Fintech Resolution)',
-    model: 'DeepSeek-V3',
-    voiceProvider: 'PlayHT 2.0',
-    sttLatency: 82,
-    llmTtft: 90,
-    ttsLatency: 118,
-    totalV2V: 290,
-    bargeIns: 0,
-    packetLoss: '0.03%',
-    jitter: '4.2ms',
-    disconnectCode: 'SIP 200 OK',
-    status: 'completed',
-  },
-];
+import { SessionTelemetry, MOCK_SESSIONS } from '../../utils/constants';
 
 export const ObservabilityPage: React.FC = () => {
   const { currentWorkspace } = useWorkspace();
@@ -203,14 +120,14 @@ export const ObservabilityPage: React.FC = () => {
         </div>
 
         {/* Live Status indicator */}
-        <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-950 font-mono font-bold shadow-2xs">
+        <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-700 font-semibold shadow-2xs">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span>Real-time Telemetry Stream: 100Hz</span>
+          <span>Real-time telemetry stream · 100 Hz</span>
         </div>
       </div>
 
       {/* ── 6-Card Performance Grid (Deep Emerald & Forest Slate) ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3.5">
+      <div className="grid grid-cols-1 min-[480px]:grid-cols-2 lg:grid-cols-6 gap-3.5">
         {/* Live Calls */}
         <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-2xs">
           <div className="flex items-center justify-between text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1">
@@ -218,7 +135,7 @@ export const ObservabilityPage: React.FC = () => {
             <span className={`w-2 h-2 rounded-full ${activeCallsCount > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`} />
           </div>
           <p className="text-2xl font-bold text-slate-900 tracking-tight">{activeCallsCount}</p>
-          <p className="text-[10px] text-emerald-700 font-semibold mt-1">
+          <p className="text-xs text-emerald-700 font-semibold mt-1">
             {activeCallsCount > 0 ? 'Live WebRTC Session' : 'No active sessions'}
           </p>
         </div>
@@ -230,7 +147,7 @@ export const ObservabilityPage: React.FC = () => {
             <span className="text-[10px] text-slate-400 font-mono">30d</span>
           </div>
           <p className="text-2xl font-bold text-slate-900 tracking-tight">{analytics.totalCalls.toLocaleString()}</p>
-          <p className="text-[10px] text-slate-500 mt-1">
+          <p className="text-xs text-slate-600 mt-1">
             {analytics.totalCalls > 0 ? 'ClickHouse Synced' : '100% Routed'}
           </p>
         </div>
@@ -244,7 +161,7 @@ export const ObservabilityPage: React.FC = () => {
           <p className="text-2xl font-bold text-emerald-800 tracking-tight">
             {analytics.avgLatencyMs > 0 ? `${analytics.avgLatencyMs}ms` : (analytics.totalCalls > 0 ? `${latencyData.total}ms` : '—')}
           </p>
-          <p className="text-[10px] text-emerald-700 font-semibold mt-1">Sub-400ms SLA</p>
+          <p className="text-xs text-emerald-700 font-semibold mt-1">Sub-400ms SLA</p>
         </div>
 
         {/* Greeting TTFT P95 */}
@@ -256,7 +173,7 @@ export const ObservabilityPage: React.FC = () => {
           <p className="text-2xl font-bold text-slate-900 tracking-tight">
             {analytics.totalCalls > 0 ? '160ms' : '—'}
           </p>
-          <p className="text-[10px] text-slate-500 mt-1">Instant Audio First-Packet</p>
+          <p className="text-xs text-slate-600 mt-1">Instant Audio First-Packet</p>
         </div>
 
         {/* Tool Success Rate */}
@@ -268,7 +185,7 @@ export const ObservabilityPage: React.FC = () => {
           <p className="text-2xl font-bold text-slate-900 tracking-tight">
             {analytics.totalCalls > 0 ? '99.4%' : '—'}
           </p>
-          <p className="text-[10px] text-slate-500 mt-1">Cal.com & PMS Tools</p>
+          <p className="text-xs text-slate-600 mt-1">Cal.com & PMS Tools</p>
         </div>
 
         {/* System Error Rate */}
@@ -280,7 +197,7 @@ export const ObservabilityPage: React.FC = () => {
           <p className="text-2xl font-bold text-slate-900 tracking-tight">
             {analytics.totalCalls > 0 ? `${(((analytics.failedCalls ?? 0) / analytics.totalCalls) * 100).toFixed(2)}%` : '0.00%'}
           </p>
-          <p className="text-[10px] text-slate-500 mt-1">SLA Target &lt; 0.1%</p>
+          <p className="text-xs text-slate-600 mt-1">SLA Target &lt; 0.1%</p>
         </div>
       </div>
 
@@ -288,10 +205,10 @@ export const ObservabilityPage: React.FC = () => {
       <div className="p-6 rounded-2xl border border-slate-200 bg-white shadow-2xs space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h3 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            <h2 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
               <Zap className="w-4 h-4 text-emerald-600" />
               <span>Voice-to-Voice (V2V) Latency by Pipeline Component</span>
-            </h3>
+            </h2>
             <p className="text-xs text-slate-500 mt-0.5">
               Turn-taking response latency decomposed into speech transcription, model inference, and acoustic synthesis.
             </p>
@@ -326,7 +243,7 @@ export const ObservabilityPage: React.FC = () => {
               </span>
               <span className="font-mono font-bold text-slate-900">{latencyData.stt}ms</span>
             </div>
-            <p className="text-[10px] text-slate-400 font-mono">Deepgram Nova-2 Streaming</p>
+            <p className="text-xs text-slate-500">Deepgram Nova-2 Streaming</p>
           </div>
 
           {/* LLM TTFT */}
@@ -338,7 +255,7 @@ export const ObservabilityPage: React.FC = () => {
               </span>
               <span className="font-mono font-bold text-slate-900">{latencyData.llm}ms</span>
             </div>
-            <p className="text-[10px] text-slate-400 font-mono">GPT-4o Realtime Engine</p>
+            <p className="text-xs text-slate-500">GPT-4o Realtime Engine</p>
           </div>
 
           {/* TTS */}
@@ -350,7 +267,7 @@ export const ObservabilityPage: React.FC = () => {
               </span>
               <span className="font-mono font-bold text-slate-900">{latencyData.tts}ms</span>
             </div>
-            <p className="text-[10px] text-slate-400 font-mono">Cartesia Sonic Sub-100ms</p>
+            <p className="text-xs text-slate-500">Cartesia Sonic Sub-100ms</p>
           </div>
 
           {/* Network RTT */}
@@ -428,10 +345,10 @@ export const ObservabilityPage: React.FC = () => {
       <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-2xs">
         <div className="p-4 border-b border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+            <h2 className="text-sm font-semibold text-slate-900">
               Live Telephony Sessions & Interrupts
-            </h3>
-            <p className="text-[11px] text-slate-500">
+            </h2>
+            <p className="text-xs text-slate-600 mt-1">
               Audit turn-by-turn latency decomposition and packet jitter across individual callers.
             </p>
           </div>

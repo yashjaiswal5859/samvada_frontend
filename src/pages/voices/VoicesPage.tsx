@@ -27,113 +27,7 @@ import {
 import { useToast } from '../../contexts/ToastContext';
 import { useWorkspace } from '../../contexts/WorkspaceContext';
 import { Modal } from '../../components/ui/Modal';
-
-interface VoiceItem {
-  id: string;
-  name: string;
-  provider: 'Cartesia Sonic' | 'ElevenLabs Turbo' | 'PlayHT 2.0' | 'OpenAI Realtime';
-  gender: 'Female' | 'Male' | 'Neutral';
-  accent: string;
-  language: string;
-  avatar: string;
-  sampleText: string;
-  latencyTtfb: string;
-  samplingRate: string;
-  tone: string;
-  idealUse: string;
-  isTrending?: boolean;
-  isCloned?: boolean;
-}
-
-const VOICES_CATALOG: VoiceItem[] = [
-  {
-    id: 'voice-sophia',
-    name: 'Sophia',
-    provider: 'Cartesia Sonic',
-    gender: 'Female',
-    accent: 'British Luxury',
-    language: 'English',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
-    sampleText: 'Good evening. Welcome to the Grand Horizon Resort. My name is Sophia. How may I orchestrate your stay today?',
-    latencyTtfb: '135ms TTFB',
-    samplingRate: '48kHz Lossless',
-    tone: 'Sophisticated & Warm',
-    idealUse: 'Luxury Hospitality, VIP Concierge',
-    isTrending: true,
-  },
-  {
-    id: 'voice-james',
-    name: 'James',
-    provider: 'ElevenLabs Turbo',
-    gender: 'Male',
-    accent: 'American Clinical',
-    language: 'English (US)',
-    avatar: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=300&q=80',
-    sampleText: 'Hello, this is James from Providence Health. I can help you schedule your clinic visit or review intake questions.',
-    latencyTtfb: '145ms TTFB',
-    samplingRate: '48kHz HD',
-    tone: 'Gentle & Authoritative',
-    idealUse: 'Healthcare Intake, HIPAA Triage',
-    isTrending: true,
-  },
-  {
-    id: 'voice-aarav',
-    name: 'Aarav',
-    provider: 'Cartesia Sonic',
-    gender: 'Male',
-    accent: 'Indian English',
-    language: 'English, Hindi',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80',
-    sampleText: 'Namaste and welcome. I am Aarav, your personal automotive advisor. How can I assist with your vehicle service?',
-    latencyTtfb: '138ms TTFB',
-    samplingRate: '48kHz HD',
-    tone: 'Polite, Clear & Energetic',
-    idealUse: 'Automotive Dealership, Bilingual Support',
-    isTrending: true,
-  },
-  {
-    id: 'voice-elena',
-    name: 'Elena',
-    provider: 'PlayHT 2.0',
-    gender: 'Female',
-    accent: 'Spanish & English',
-    language: 'English, Spanish',
-    avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=300&q=80',
-    sampleText: 'Hello, this is Elena from Apex Financial. I can assist you today with structured payment agreements and account updates.',
-    latencyTtfb: '160ms TTFB',
-    samplingRate: '44.1kHz',
-    tone: 'Empathetic & Firm',
-    idealUse: 'Fintech Collections, Debt Restructuring',
-  },
-  {
-    id: 'voice-liam',
-    name: 'Liam',
-    provider: 'PlayHT 2.0',
-    gender: 'Male',
-    accent: 'American Corporate',
-    language: 'English (US)',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80',
-    sampleText: 'Hi! This is Liam with CloudScale Systems. I noticed your team requested a voice automation benchmark demo.',
-    latencyTtfb: '150ms TTFB',
-    samplingRate: '48kHz HD',
-    tone: 'Confident & Engaging',
-    idealUse: 'B2B Sales SDR, Inbound Lead Qualification',
-  },
-  {
-    id: 'voice-priya',
-    name: 'Priya',
-    provider: 'ElevenLabs Turbo',
-    gender: 'Female',
-    accent: 'Indian Neutral',
-    language: 'English, Hindi',
-    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80',
-    sampleText: 'Hi there! This is Priya from Lumina Goods. I can look up your recent shipment or initiate a refund in just seconds.',
-    latencyTtfb: '142ms TTFB',
-    samplingRate: '48kHz HD',
-    tone: 'Warm, Patient & Empathetic',
-    idealUse: 'E-Commerce CSAT, Inbound Telephony',
-  },
-];
+import { VOICES_CATALOG, VoiceCatalogItem as VoiceItem } from '../../utils/constants';
 
 export const VoicesPage: React.FC = () => {
   const navigate = useNavigate();
@@ -271,10 +165,10 @@ export const VoicesPage: React.FC = () => {
       {/* ── Top Trending Voice Portrait Cards ── */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+          <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-emerald-600" />
             <span>Trending Production Voices</span>
-          </h3>
+          </h2>
           <span className="text-[11px] font-mono text-emerald-700 font-semibold">
             Zero-Jitter • Sub-150ms TTFB
           </span>
@@ -310,7 +204,7 @@ export const VoicesPage: React.FC = () => {
 
                   {/* Acoustic Waveform Sample Box */}
                   <div className="mt-4 p-3 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
-                    <p className="text-[11px] text-slate-600 italic line-clamp-2">
+                    <p className="text-sm text-slate-700 italic leading-relaxed line-clamp-2">
                       "{v.sampleText}"
                     </p>
                     <div className="flex items-center justify-between text-[10px] font-mono text-slate-400">

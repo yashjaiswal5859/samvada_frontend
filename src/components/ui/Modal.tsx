@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
@@ -8,8 +8,9 @@ interface ModalProps {
   title: string;
   subtitle?: string;
   children: React.ReactNode;
-  maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
+  maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl';
   theme?: 'light' | 'dark';
+  scrollToTopKey?: string | number;
 }
 
 export const Modal: React.FC<ModalProps> = ({
@@ -20,8 +21,10 @@ export const Modal: React.FC<ModalProps> = ({
   children,
   maxWidth = 'md',
   theme = 'light',
+  scrollToTopKey,
 }) => {
   const isLight = theme === 'light';
+  const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -39,6 +42,12 @@ export const Modal: React.FC<ModalProps> = ({
     return undefined;
   }, [isOpen, onClose]);
 
+  useEffect(() => {
+    if (isOpen && scrollToTopKey !== undefined) {
+      contentRef.current?.scrollTo({ top: 0, behavior: 'auto' });
+    }
+  }, [isOpen, scrollToTopKey]);
+
   if (!isOpen) return null;
 
   const maxWidthClasses = {
@@ -47,6 +56,8 @@ export const Modal: React.FC<ModalProps> = ({
     lg: 'max-w-lg',
     xl: 'max-w-xl',
     '2xl': 'max-w-2xl',
+    '3xl': 'max-w-3xl',
+    '4xl': 'max-w-4xl',
   };
 
   return createPortal(
@@ -85,7 +96,7 @@ export const Modal: React.FC<ModalProps> = ({
         </div>
 
         {/* Content */}
-        <div className="p-4 sm:p-6 overflow-y-auto overscroll-contain space-y-4 flex-1">{children}</div>
+        <div ref={contentRef} className="p-4 sm:p-6 overflow-y-auto overscroll-contain space-y-4 flex-1">{children}</div>
       </div>
     </div>,
     document.body

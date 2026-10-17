@@ -27,35 +27,6 @@ export const verifyLoginOTP = async (requestId: string, otp: string, loginChalle
   return res.data.data;
 };
 
-export const requestRegisterOTP = async (email: string, displayName?: string): Promise<OTPResponse> => {
-  const payload: { email: string; displayName?: string } = { email };
-  if (displayName) {
-    payload.displayName = displayName;
-  }
-  const res = await apiClient.post<APIEnvelope<OTPResponse>>('/api/v1/auth/admin/register', payload);
-  if (!res.data.success || !res.data.data) {
-    throw new Error(res.data.error?.message || 'Failed to request registration OTP');
-  }
-  return res.data.data;
-};
-
-export const verifyRegisterOTP = async (requestId: string, otp: string, loginChallenge?: string): Promise<VerifyOTPResponse> => {
-  const res = await apiClient.post<APIEnvelope<VerifyOTPResponse>>('/api/v1/auth/admin/verify', {
-    requestId,
-    otp,
-    loginChallenge,
-  });
-  if (!res.data.success || !res.data.data) {
-    throw new Error(res.data.error?.message || 'Failed to verify registration OTP');
-  }
-  if (res.data.data.accessToken) {
-    setAccessToken(res.data.data.accessToken);
-  }
-  if (res.data.data.refreshToken) {
-    setRefreshToken(res.data.data.refreshToken);
-  }
-  return res.data.data;
-};
 
 export const fetchMe = async (): Promise<User> => {
   // Session & tenant data is fetched directly from ABS (samvada_abs)

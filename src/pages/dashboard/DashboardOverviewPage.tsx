@@ -13,7 +13,6 @@ import {
   Mic,
   BarChart3,
   Bot,
-  Upload,
   ArrowRight,
   Megaphone,
   PhoneForwarded,
@@ -27,6 +26,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { CustomSelect } from '../../components/ui/CustomSelect';
 
 export const DashboardOverviewPage: React.FC = () => {
+  const [setupExpandedOverride, setSetupExpandedOverride] = useState<boolean | null>(null);
   const [analytics, setAnalytics] = useState<AnalyticsSummary | null>(null);
   const [volumeData, setVolumeData] = useState<AnalyticsSummary['dailyCallVolume']>([]);
   const [recentCalls, setRecentCalls] = useState<CallRecord[]>([]);
@@ -89,6 +89,7 @@ export const DashboardOverviewPage: React.FC = () => {
   const maxTrendVal = Math.max(...volumeData.map((d) => d.total || 0), 10);
 
   const totalCalls = analytics?.totalCalls ?? 0;
+  const isSetupExpanded = setupExpandedOverride ?? (totalCalls === 0);
   const completedCalls = analytics?.completedCalls ?? 0;
   const successRate = analytics?.overallSuccessRate ?? 0;
   const avgDurationSec = analytics?.avgDurationSec ?? 0;
@@ -136,17 +137,25 @@ export const DashboardOverviewPage: React.FC = () => {
             </div>
             <div>
               <h2 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-                <span>Fast-Track Setup — Get Your Voice AI Live in 3 Steps</span>
+                <span>Get started with voice AI</span>
               </h2>
-              <p className="text-xs text-slate-500">Everything you need to launch natural conversational voice workflows.</p>
+              <p className="text-xs text-slate-500">Three steps to launch your first voice workflow.</p>
             </div>
           </div>
+          <button
+            type="button"
+            aria-expanded={isSetupExpanded}
+            onClick={() => setSetupExpandedOverride((expanded) => !(expanded ?? (totalCalls === 0)))}
+            className="self-start sm:self-auto min-h-8 px-3 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors"
+          >
+            {isSetupExpanded ? 'Hide steps' : 'Show setup steps'}
+          </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 pt-3.5">
+        {isSetupExpanded && <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 pt-3.5">
           {/* Step 1 */}
           <Link
-            to="/ai-studio"
+            to="/agents"
             className="group p-3.5 rounded-xl bg-slate-50/70 hover:bg-slate-100/70 border border-slate-200/80 hover:border-slate-300 transition-all flex flex-col justify-between"
           >
             <div className="space-y-1.5">
@@ -159,12 +168,12 @@ export const DashboardOverviewPage: React.FC = () => {
               <h3 className="text-xs sm:text-sm font-semibold text-slate-900 group-hover:text-emerald-700 transition-colors">
                 Create Your First Agent
               </h3>
-              <p className="text-[11px] text-slate-500 leading-relaxed">
-                Create an editable agent draft from a short description, then review its instructions and settings.
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Start an agent draft from a short brief, then add knowledge sources and guardrails.
               </p>
             </div>
             <div className="pt-2.5 flex items-center gap-1.5 text-xs font-medium text-emerald-700">
-              <span>Create an agent draft</span>
+              <span>Open Voice Agents</span>
               <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
             </div>
           </Link>
@@ -184,7 +193,7 @@ export const DashboardOverviewPage: React.FC = () => {
               <h3 className="text-xs sm:text-sm font-semibold text-slate-900 group-hover:text-blue-700 transition-colors">
                 Add your business information
               </h3>
-              <p className="text-[11px] text-slate-500 leading-relaxed">
+              <p className="text-xs text-slate-600 leading-relaxed">
                 Give your agent trusted answers with documents, FAQs, or website content.
               </p>
             </div>
@@ -209,7 +218,7 @@ export const DashboardOverviewPage: React.FC = () => {
               <h3 className="text-xs sm:text-sm font-semibold text-slate-900 group-hover:text-purple-700 transition-colors">
                 Import your audience
               </h3>
-              <p className="text-[11px] text-slate-500 leading-relaxed">
+              <p className="text-xs text-slate-600 leading-relaxed">
                 Add or import people before you prepare an outbound campaign.
               </p>
             </div>
@@ -218,7 +227,7 @@ export const DashboardOverviewPage: React.FC = () => {
               <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
             </div>
           </Link>
-        </div>
+        </div>}
       </div>
 
       {/* 4 Metric Summary Cards */}
@@ -489,9 +498,9 @@ export const DashboardOverviewPage: React.FC = () => {
                 <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-3 shadow-inner">
                   <Bot className="w-5 h-5" />
                 </div>
-                <h4 className="text-sm font-semibold text-white">No Agents Created</h4>
+                <h4 className="text-sm font-semibold text-white">No agent activity in this period</h4>
                 <p className="text-xs text-zinc-400 max-w-xs mt-1">
-                  Create your first voice agent to start tracking individual agent KPIs and conversion rates.
+                  Calls from your agents will appear here when they have activity in the selected date range.
                 </p>
                 <Button
                   variant="primary"
@@ -593,18 +602,18 @@ export const DashboardOverviewPage: React.FC = () => {
           <h3 className="text-base font-bold text-white tracking-tight mb-2">Quick Actions</h3>
 
           <button
-            onClick={() => navigate('/agents/create')}
+            onClick={() => navigate('/calls/live')}
             className="w-full flex items-center justify-between p-3 rounded-xl bg-[#080b11] border border-zinc-800/80 hover:border-zinc-700 transition-colors group"
           >
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400">
-                <Bot className="w-4 h-4" />
+                <Phone className="w-4 h-4" />
               </div>
               <div className="text-left">
                 <div className="text-xs font-semibold text-white group-hover:text-blue-400 transition-colors">
-                  Create Voice Agent
+                  Monitor Live Calls
                 </div>
-                <div className="text-[10px] text-zinc-400">Configure prompt, voice & personality</div>
+                <div className="text-xs text-zinc-400">Review active conversations in real time</div>
               </div>
             </div>
             <ArrowRight className="w-4 h-4 text-zinc-600 group-hover:text-zinc-300 transition-colors" />
@@ -622,25 +631,25 @@ export const DashboardOverviewPage: React.FC = () => {
                 <div className="text-xs font-semibold text-white group-hover:text-purple-400 transition-colors">
                   New Call Campaign
                 </div>
-                <div className="text-[10px] text-zinc-400">Launch batch outbound calling</div>
+                <div className="text-xs text-zinc-400">Launch batch outbound calling</div>
               </div>
             </div>
             <ArrowRight className="w-4 h-4 text-zinc-600 group-hover:text-zinc-300 transition-colors" />
           </button>
 
           <button
-            onClick={() => navigate('/contacts')}
+            onClick={() => navigate('/analytics')}
             className="w-full flex items-center justify-between p-3 rounded-xl bg-[#080b11] border border-zinc-800/80 hover:border-zinc-700 transition-colors group"
           >
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400">
-                <Upload className="w-4 h-4" />
+                <BarChart3 className="w-4 h-4" />
               </div>
               <div className="text-left">
                 <div className="text-xs font-semibold text-white group-hover:text-emerald-400 transition-colors">
-                  Import Contacts
+                  Review Analytics
                 </div>
-                <div className="text-[10px] text-zinc-400">Upload CSV or sync CRM leads</div>
+                <div className="text-xs text-zinc-400">Explore trends and agent performance</div>
               </div>
             </div>
             <ArrowRight className="w-4 h-4 text-zinc-600 group-hover:text-zinc-300 transition-colors" />

@@ -352,6 +352,29 @@ input[type="radio"] {
   color: #334155 !important;
 }
 
+/* Keep the help-search hero legible on its intentionally dark gradient surface. */
+.portal-light .help-search-hero h2 {
+  color: #f8fafc !important;
+}
+
+.portal-light .help-search-hero .help-hero-description {
+  color: #cbd5e1 !important;
+}
+
+.portal-light .help-search-hero .help-topic-label {
+  color: #e2e8f0 !important;
+}
+
+.portal-light .help-support-secondary {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+.portal-light .help-support-secondary:hover {
+  background-color: #f8fafc !important;
+}
+
 /* Form Inputs, Textareas, and Dropdown selects */
 .portal-light input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
 .portal-light textarea {
@@ -464,6 +487,4 @@ input[type="radio"] {
 .portal-light ::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.28) !important;
 }
-
-
 

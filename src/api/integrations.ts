@@ -2,12 +2,7 @@ import { apiClient } from './client';
 import { Integration, APIEnvelope } from '../types';
 import { MOCK_INTEGRATIONS } from '../utils/constants';
 
-export const getIntegrations = async (): Promise<Integration[]> => {
-  const res = await apiClient.get<APIEnvelope<any[]>>('/api/v1/integrations');
-  if (!res.data?.success || !Array.isArray(res.data.data)) {
-    throw new Error('Integration status was not confirmed by the server.');
-  }
-  const dataList = res.data.data || [];
+export const formatIntegrations = (dataList: any[] = []): Integration[] => {
   return MOCK_INTEGRATIONS.map((catalogItem) => {
     const item = dataList.find((entry: any) =>
       entry.provider === catalogItem.id || entry.id === catalogItem.id ||
@@ -19,6 +14,14 @@ export const getIntegrations = async (): Promise<Integration[]> => {
       apiKeySet: !!item?.credentials_json && item.credentials_json !== '{}',
     };
   });
+};
+
+export const getIntegrations = async (): Promise<Integration[]> => {
+  const res = await apiClient.get<APIEnvelope<any[]>>('/api/v1/integrations');
+  if (!res.data?.success || !Array.isArray(res.data.data)) {
+    throw new Error('Integration status was not confirmed by the server.');
+  }
+  return formatIntegrations(res.data.data || []);
 };
 
 export const toggleIntegration = async (id: string, connected: boolean): Promise<Integration> => {

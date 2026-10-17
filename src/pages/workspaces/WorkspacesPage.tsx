@@ -101,13 +101,13 @@ export const WorkspacesPage: React.FC = () => {
       </div>
 
       {/* Overview Stat Cards */}
-      <div className="grid grid-cols-1 min-[480px]:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="hidden lg:grid grid-cols-4 gap-4">
         <div className="p-4 rounded-2xl bg-[#0c101b]/90 border border-zinc-800/80 backdrop-blur-xl">
           <div className="flex items-center justify-between">
             <span className="text-xs text-zinc-400 font-medium">Total Workspaces</span>
             <Layers className="w-4 h-4 text-blue-400" />
           </div>
-          <p className="text-2xl font-bold text-white mt-1">{allWorkspaces.length}</p>
+          <p className="text-2xl font-bold text-slate-900 mt-1">{allWorkspaces.length}</p>
           <p className="text-[11px] text-zinc-400 mt-1">Active workspace records</p>
         </div>
 
@@ -116,7 +116,7 @@ export const WorkspacesPage: React.FC = () => {
             <span className="text-xs text-zinc-400 font-medium">Active AI Voice Agents</span>
             <Sparkles className="w-4 h-4 text-emerald-400" />
           </div>
-          <p className="text-2xl font-bold text-white mt-1">
+          <p className="text-2xl font-bold text-slate-900 mt-1">
             {allWorkspaces.every((w) => w.activeAgentsCount === null) ? '—' : allWorkspaces.reduce((acc, w) => acc + (w.activeAgentsCount || 0), 0)}
           </p>
           <p className="text-[11px] text-zinc-400 mt-1">Reported for loaded workspaces</p>
@@ -127,7 +127,7 @@ export const WorkspacesPage: React.FC = () => {
             <span className="text-xs text-zinc-400 font-medium">Live In-Flight Calls</span>
             <Radio className="w-4 h-4 text-rose-400 animate-pulse" />
           </div>
-          <p className="text-2xl font-bold text-white mt-1">
+          <p className="text-2xl font-bold text-slate-900 mt-1">
             {allWorkspaces.every((w) => w.liveCallsCount === null) ? '—' : allWorkspaces.reduce((acc, w) => acc + (w.liveCallsCount || 0), 0)}
           </p>
           <p className="text-[11px] text-zinc-400 mt-1">Live call count when available</p>
@@ -138,7 +138,7 @@ export const WorkspacesPage: React.FC = () => {
             <span className="text-xs text-zinc-400 font-medium">Human Escalation Reps</span>
             <Users className="w-4 h-4 text-purple-400" />
           </div>
-          <p className="text-2xl font-bold text-white mt-1">
+          <p className="text-2xl font-bold text-slate-900 mt-1">
             {allWorkspaces.every((w) => w.escalationMembersCount === null) ? '—' : allWorkspaces.reduce((acc, w) => acc + (w.escalationMembersCount || 0), 0)}
           </p>
           <p className="text-[11px] text-zinc-400 mt-1">Reported escalation team members</p>
@@ -182,7 +182,7 @@ export const WorkspacesPage: React.FC = () => {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="text-base font-bold text-white tracking-tight">{ws.name}</h3>
+                      <h2 className="text-base font-bold text-white tracking-tight">{ws.name}</h2>
                       {isSelected && (
                         <span className="text-[10px] uppercase font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40 px-2 py-0.5 rounded-full flex items-center gap-1">
                           <CheckCircle2 className="w-3 h-3 text-blue-400" />

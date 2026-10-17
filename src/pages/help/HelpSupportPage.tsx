@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
 import { CustomSelect } from '../../components/ui/CustomSelect';
+import { SUPPORT_FAQS, SUPPORT_POPULAR_TOPICS } from '../../utils/constants';
 
 export const HelpSupportPage: React.FC = () => {
   const navigate = useNavigate();
@@ -102,41 +103,8 @@ export const HelpSupportPage: React.FC = () => {
     }
   ];
 
-  const faqs = [
-    {
-      q: 'How do I set up my first voice agent?',
-      a: 'Go to Agents > Create Agent or click "Create with AI Chat". You can set up your assistant in under 2 minutes without any technical setup.'
-    },
-    {
-      q: 'Which telephony providers are supported?',
-      a: 'Samvada AI supports major phone networks, VoIP systems, and browser calls with crystal-clear audio and instant response times.'
-    },
-    {
-      q: 'How does billing work?',
-      a: 'Billing is calculated per minute of active voice call, plus monthly subscription plan tier limits. Detailed breakdowns are visible on the Billing & Usage page.'
-    },
-    {
-      q: 'Can I use my own business documents and price lists?',
-      a: 'Yes! Upload PDF files, office documents, or paste your website link. Your voice assistant will learn your products and answers automatically.'
-    },
-    {
-      q: 'What languages are supported?',
-      a: 'Samvada AI supports English (US, UK, Indian accents), Hindi, Hinglish, Spanish, French, and 40+ global languages.'
-    },
-    {
-      q: 'How do I handle call failures or retries?',
-      a: 'Configure retry policies in Campaign Settings to automatically re-dial busy lines or failed calls up to 3 times at custom intervals.'
-    }
-  ];
-
-  const popularTopics = [
-    'Getting Started',
-    'Voice Agents',
-    'Call Configuration',
-    'Billing',
-    'API Integration',
-    'Troubleshooting'
-  ];
+  const faqs = SUPPORT_FAQS;
+  const popularTopics = SUPPORT_POPULAR_TOPICS;
 
   const handleTicketSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -156,7 +124,7 @@ export const HelpSupportPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setTicketModalOpen(true)}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-zinc-800 bg-[#0e1320] hover:bg-zinc-800 text-zinc-200 text-xs font-semibold transition-all shadow-sm"
+            className="help-support-secondary flex items-center gap-2 px-3.5 py-2 rounded-xl border border-zinc-800 bg-[#0e1320] hover:bg-zinc-800 text-zinc-200 text-xs font-semibold transition-all shadow-sm"
           >
             <MessageSquare className="w-4 h-4 text-zinc-400" />
             <span>Open a Support Ticket</span>
@@ -172,10 +140,10 @@ export const HelpSupportPage: React.FC = () => {
       </div>
 
       {/* Hero Search Banner */}
-      <div className="rounded-2xl border border-blue-500/20 bg-gradient-to-r from-[#0c1427] via-[#091020] to-[#0d162a] p-6 shadow-xl relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6">
+      <div className="help-search-hero rounded-2xl border border-blue-500/20 bg-gradient-to-r from-[#0c1427] via-[#091020] to-[#0d162a] p-6 shadow-xl relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="max-w-xl z-10 w-full">
           <h2 className="text-xl font-bold text-white tracking-tight">How can we help you?</h2>
-          <p className="text-xs text-zinc-400 mt-1">
+          <p className="help-hero-description text-xs text-zinc-400 mt-1">
             Search our knowledge base, guides, or ask a specific question.
           </p>
 
@@ -197,7 +165,7 @@ export const HelpSupportPage: React.FC = () => {
 
           {/* Popular Topics */}
           <div className="flex flex-wrap items-center gap-2 mt-3.5">
-            <span className="text-[11px] text-zinc-400 font-medium">Popular topics:</span>
+            <span className="help-topic-label text-[11px] text-zinc-400 font-medium">Popular topics:</span>
             {popularTopics.map((topic) => (
               <button
                 key={topic}
@@ -310,7 +278,7 @@ export const HelpSupportPage: React.FC = () => {
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-bold text-white">System Status</h2>
                 <span className="inline-flex items-center gap-1.5 text-xs text-zinc-300 font-medium bg-zinc-800 px-2 py-0.5 rounded-md border border-zinc-700">
-                  Status unavailable
+                  Status unknown
                 </span>
               </div>
               <button className="text-xs font-semibold text-blue-400 hover:text-blue-300">
@@ -321,20 +289,20 @@ export const HelpSupportPage: React.FC = () => {
 
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="p-2 rounded-xl bg-[#080b11] border border-zinc-800/80 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                <span className="text-zinc-300 font-medium">API</span>
+                <span className="w-2 h-2 rounded-full bg-zinc-500"></span>
+                <span className="text-zinc-300 font-medium">API · Unknown</span>
               </div>
               <div className="p-2 rounded-xl bg-[#080b11] border border-zinc-800/80 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                <span className="text-zinc-300 font-medium">Telephony</span>
+                <span className="w-2 h-2 rounded-full bg-zinc-500"></span>
+                <span className="text-zinc-300 font-medium">Telephony · Unknown</span>
               </div>
               <div className="p-2 rounded-xl bg-[#080b11] border border-zinc-800/80 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                <span className="text-zinc-300 font-medium">Voice Agents</span>
+                <span className="w-2 h-2 rounded-full bg-zinc-500"></span>
+                <span className="text-zinc-300 font-medium">Voice Agents · Unknown</span>
               </div>
               <div className="p-2 rounded-xl bg-[#080b11] border border-zinc-800/80 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                <span className="text-zinc-300 font-medium">Dashboard</span>
+                <span className="w-2 h-2 rounded-full bg-zinc-500"></span>
+                <span className="text-zinc-300 font-medium">Dashboard · Unknown</span>
               </div>
             </div>
           </div>

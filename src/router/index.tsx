@@ -5,54 +5,61 @@ import { User } from '../types';
 import { Loader2 } from 'lucide-react';
 import { AppLayout } from '../components/layout/AppLayout';
 
-// Auth & Onboarding Pages
-import { LoginPage } from '../pages/auth/LoginPage';
-import { RegisterPage } from '../pages/auth/RegisterPage';
-import { ForgotPasswordPage } from '../pages/auth/ForgotPasswordPage';
-import { VerifyEmailPage } from '../pages/auth/VerifyEmailPage';
-import { ProfileSetupPage } from '../pages/onboarding/ProfileSetupPage';
-import { IndustrySelectPage } from '../pages/onboarding/IndustrySelectPage';
-
-import { LandingPage } from '../pages/landing/LandingPage';
+// Auth & Onboarding Pages (Lazy Loaded for Optimal Initial Bundle Size)
+const LoginPage = React.lazy(() => import('../pages/auth/LoginPage').then(m => ({ default: m.LoginPage })));
+const ForgotPasswordPage = React.lazy(() => import('../pages/auth/ForgotPasswordPage').then(m => ({ default: m.ForgotPasswordPage })));
+const VerifyEmailPage = React.lazy(() => import('../pages/auth/VerifyEmailPage').then(m => ({ default: m.VerifyEmailPage })));
+const ProfileSetupPage = React.lazy(() => import('../pages/onboarding/ProfileSetupPage').then(m => ({ default: m.ProfileSetupPage })));
+const IndustrySelectPage = React.lazy(() => import('../pages/onboarding/IndustrySelectPage').then(m => ({ default: m.IndustrySelectPage })));
+const LandingPage = React.lazy(() => import('../pages/landing/LandingPage').then(m => ({ default: m.LandingPage })));
 
 // Portal Core Pages
-import { HomePage } from '../pages/home/HomePage';
-import { DashboardOverviewPage } from '../pages/dashboard/DashboardOverviewPage';
+const HomePage = React.lazy(() => import('../pages/home/HomePage').then(m => ({ default: m.HomePage })));
+const DashboardOverviewPage = React.lazy(() => import('../pages/dashboard/DashboardOverviewPage').then(m => ({ default: m.DashboardOverviewPage })));
 
 // Build Module
-import { AgentListPage } from '../pages/agents/AgentListPage';
-import { AgentCreatePage } from '../pages/agents/AgentCreatePage';
-import { AiAgentStudioPage } from '../pages/agents/AiAgentStudioPage';
-import { AgentStudioPage } from '../pages/agents/AgentStudioPage';
-import { VoicesPage } from '../pages/voices/VoicesPage';
-import { KnowledgebasePage } from '../pages/knowledge/KnowledgebasePage';
-import { IntegrationsPage } from '../pages/integrations/IntegrationsPage';
+const AgentListPage = React.lazy(() => import('../pages/agents/AgentListPage').then(m => ({ default: m.AgentListPage })));
+const AgentCreatePage = React.lazy(() => import('../pages/agents/AgentCreatePage').then(m => ({ default: m.AgentCreatePage })));
+const AiAgentStudioPage = React.lazy(() => import('../pages/agents/AiAgentStudioPage').then(m => ({ default: m.AiAgentStudioPage })));
+const AgentStudioPage = React.lazy(() => import('../pages/agents/AgentStudioPage').then(m => ({ default: m.AgentStudioPage })));
+const VoicesPage = React.lazy(() => import('../pages/voices/VoicesPage').then(m => ({ default: m.VoicesPage })));
+const KnowledgebasePage = React.lazy(() => import('../pages/knowledge/KnowledgebasePage').then(m => ({ default: m.KnowledgebasePage })));
+const IntegrationsPage = React.lazy(() => import('../pages/integrations/IntegrationsPage').then(m => ({ default: m.IntegrationsPage })));
 
 // Deploy Module
-import { CampaignListPage } from '../pages/campaigns/CampaignListPage';
-import { CampaignCreatePage } from '../pages/campaigns/CampaignCreatePage';
-import { ContactsPage } from '../pages/contacts/ContactsPage';
-import { PhoneNumbersPage } from '../pages/telephony/PhoneNumbersPage';
+const CampaignListPage = React.lazy(() => import('../pages/campaigns/CampaignListPage').then(m => ({ default: m.CampaignListPage })));
+const CampaignCreatePage = React.lazy(() => import('../pages/campaigns/CampaignCreatePage').then(m => ({ default: m.CampaignCreatePage })));
+const ContactsPage = React.lazy(() => import('../pages/contacts/ContactsPage').then(m => ({ default: m.ContactsPage })));
+const PhoneNumbersPage = React.lazy(() => import('../pages/telephony/PhoneNumbersPage').then(m => ({ default: m.PhoneNumbersPage })));
 
 // Monitor Module
-import { CallHistoryPage } from '../pages/conversations/CallHistoryPage';
-import { CallDetailPage } from '../pages/conversations/CallDetailPage';
-import { LiveCallConsolePage } from '../pages/conversations/LiveCallConsolePage';
-import { NotificationsPage } from '../pages/notifications/NotificationsPage';
-import { AnalyticsPage } from '../pages/analytics/AnalyticsPage';
-import { ObservabilityPage } from '../pages/observability/ObservabilityPage';
+const CallHistoryPage = React.lazy(() => import('../pages/conversations/CallHistoryPage').then(m => ({ default: m.CallHistoryPage })));
+const CallDetailPage = React.lazy(() => import('../pages/conversations/CallDetailPage').then(m => ({ default: m.CallDetailPage })));
+const LiveCallConsolePage = React.lazy(() => import('../pages/conversations/LiveCallConsolePage').then(m => ({ default: m.LiveCallConsolePage })));
+const NotificationsPage = React.lazy(() => import('../pages/notifications/NotificationsPage').then(m => ({ default: m.NotificationsPage })));
+const AnalyticsPage = React.lazy(() => import('../pages/analytics/AnalyticsPage').then(m => ({ default: m.AnalyticsPage })));
+const ObservabilityPage = React.lazy(() => import('../pages/observability/ObservabilityPage').then(m => ({ default: m.ObservabilityPage })));
 
 // Settings & Help Module
-import { SettingsPage } from '../pages/settings/SettingsPage';
-import { ProfileSettingsPage } from '../pages/settings/ProfileSettingsPage';
-import { SecuritySettingsPage } from '../pages/settings/SecuritySettingsPage';
-import { AuditLogsPage } from '../pages/settings/AuditLogsPage';
-import { TeamMembersPage } from '../pages/settings/TeamMembersPage';
-import { BillingUsagePage } from '../pages/settings/BillingUsagePage';
-import { WorkspacesPage } from '../pages/workspaces/WorkspacesPage';
-import { GettingStartedPage } from '../pages/help/GettingStartedPage';
-import { HelpSupportPage } from '../pages/help/HelpSupportPage';
+const SettingsPage = React.lazy(() => import('../pages/settings/SettingsPage').then(m => ({ default: m.SettingsPage })));
+const ProfileSettingsPage = React.lazy(() => import('../pages/settings/ProfileSettingsPage').then(m => ({ default: m.ProfileSettingsPage })));
+const SecuritySettingsPage = React.lazy(() => import('../pages/settings/SecuritySettingsPage').then(m => ({ default: m.SecuritySettingsPage })));
+const AuditLogsPage = React.lazy(() => import('../pages/settings/AuditLogsPage').then(m => ({ default: m.AuditLogsPage })));
+const TeamMembersPage = React.lazy(() => import('../pages/settings/TeamMembersPage').then(m => ({ default: m.TeamMembersPage })));
+const BillingUsagePage = React.lazy(() => import('../pages/settings/BillingUsagePage').then(m => ({ default: m.BillingUsagePage })));
+const WorkspacesPage = React.lazy(() => import('../pages/workspaces/WorkspacesPage').then(m => ({ default: m.WorkspacesPage })));
+const GettingStartedPage = React.lazy(() => import('../pages/help/GettingStartedPage').then(m => ({ default: m.GettingStartedPage })));
+const HelpSupportPage = React.lazy(() => import('../pages/help/HelpSupportPage').then(m => ({ default: m.HelpSupportPage })));
 import { getOnboardingRoute } from '../utils/navigation';
+
+const PageLoadingFallback: React.FC = () => (
+  <div className="min-h-[50vh] flex flex-col items-center justify-center p-8 space-y-3">
+    <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200/80 flex items-center justify-center text-emerald-700 shadow-sm">
+      <Loader2 className="w-5 h-5 animate-spin" />
+    </div>
+    <span className="text-xs font-medium text-slate-500 animate-pulse">Loading view...</span>
+  </div>
+);
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode; requireOnboarding?: boolean }> = ({
   children,
@@ -79,14 +86,33 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; requireOnboarding?: 
   return <>{children}</>;
 };
 
+const RootRoute: React.FC = () => {
+  const { isAuthenticated, user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#050814] flex items-center justify-center text-blue-400">
+        <Loader2 className="w-8 h-8 animate-spin" />
+      </div>
+    );
+  }
+
+  if (isAuthenticated && user) {
+    return <Navigate to={user.onboardingCompleted ? '/home' : getOnboardingRoute(user)} replace />;
+  }
+
+  return <LandingPage />;
+};
+
 export const AppRouter: React.FC = () => {
   const { isAuthenticated, user } = useAuth();
 
   return (
     <BrowserRouter>
-      <Routes>
-        {/* Public Enterprise Landing Page */}
-        <Route path="/" element={<LandingPage />} />
+      <React.Suspense fallback={<PageLoadingFallback />}>
+        <Routes>
+        {/* Public Enterprise Landing Page / Root */}
+        <Route path="/" element={<RootRoute />} />
         <Route path="/landing" element={<LandingPage />} />
 
         {/* Public Auth Routes */}
@@ -216,6 +242,16 @@ export const AppRouter: React.FC = () => {
         />
         <Route
           path="/knowledge"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <KnowledgebasePage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/knowledge/:folderName"
           element={
             <ProtectedRoute>
               <AppLayout>
@@ -361,6 +397,16 @@ export const AppRouter: React.FC = () => {
           }
         />
         <Route
+          path="/settings/telephony"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <SettingsPage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/settings/profile"
           element={
             <ProtectedRoute>
@@ -443,6 +489,7 @@ export const AppRouter: React.FC = () => {
           }
         />
       </Routes>
+      </React.Suspense>
     </BrowserRouter>
   );
 };

@@ -93,7 +93,7 @@ export interface IndustrySelectionPayload {
 export interface Voice {
   id: string;
   name: string;
-  provider: 'elevenlabs' | 'openai' | 'deepgram' | 'azure';
+  provider: 'fish-audio' | 'elevenlabs' | 'cartesia' | 'playht' | 'openai' | 'deepgram' | 'azure';
   gender: 'female' | 'male' | 'neutral';
   language: string;
   accent?: string;
@@ -114,6 +114,11 @@ export interface Agent {
   model: string; // e.g. 'gpt-4o', 'claude-3-5-sonnet', 'gemini-1.5-pro'
   status: 'active' | 'draft' | 'archived';
   phoneNumber?: string;
+  phoneNumberId?: string;
+  escalationPhoneNumber?: string;
+  greetingText?: string;
+  inboundGreeting?: string;
+  outboundGreeting?: string;
   workspaceId?: string;
   knowledgeBaseIds: string[];
   createdAt: string;
@@ -121,17 +126,75 @@ export interface Agent {
   totalCalls: number;
   avgDurationSec: number;
   successRate: number;
+  callDirection?: 'inbound' | 'outbound' | 'both';
+  primaryLanguage?: string;
+  additionalLanguages?: string[];
+  supportedLanguages?: string[];
+  telephonyProvider?: string;
+  sttProvider?: string;
+  ttsProvider?: string;
+  sttKeyterms?: string[];
+  speakingRate?: number;
+  pauseBeforeSpeakingMs?: number;
+  allowInterruptions?: boolean;
+  greetingMode?: 'static' | 'dynamic';
+  silenceBehavior?: 'prompt-again' | 'handoff' | 'end-call';
+  silenceTimeoutSeconds?: number;
+  toolAllowlist?: string[];
+  toolsConfig?: any;
 }
 
 export interface CreateAgentPayload {
-  name: string;
-  role: string;
+  name?: string;
+  role?: string;
   description?: string;
   systemPrompt?: string;
-  voiceId: string;
+  voiceId?: string;
+  voiceName?: string;
   language?: string;
+  supportedLanguages?: string[];
+  callDirection?: 'inbound' | 'outbound' | 'both';
   model?: string;
+  status?: 'active' | 'draft';
+  telephonyProvider?: string;
+  phoneNumberId?: string;
+  escalationPhoneNumber?: string;
+  sttProvider?: string;
+  ttsProvider?: string;
+  firstSpeaker?: 'agent' | 'caller';
+  greetingMode?: 'static' | 'dynamic';
+  greetingText?: string;
+  inboundGreeting?: string;
+  outboundGreeting?: string;
+  pauseBeforeSpeakingMs?: number;
+  sttKeyterms?: string[];
+  voiceBehavior?: {
+    allowInterruptions: boolean;
+    speakingRate: number;
+    silenceBehavior: 'prompt-again' | 'handoff' | 'end-call';
+    silenceTimeoutSeconds: number;
+  };
+  faqEntries?: Array<{ question: string; answer: string }>;
+  toolAllowlist?: string[];
   templateId?: string;
+  knowledgeBaseIds?: string[];
+  knowledgeDocumentIds?: string[];
+  guardrails?: {
+    redactSensitiveData: boolean;
+    groundAnswersInKnowledge: boolean;
+    restrictedTopics: string[];
+    prohibitedPromises: string[];
+    escalationTriggers: string[];
+    aiDisclosure: string;
+    recordingDisclosure: string;
+    customRules?: string;
+    escalationPhoneNumber?: string;
+  };
+  complianceFlags?: {
+    aiDisclosureRequired: true;
+    recordingDisclosureRequired: true;
+    outboundDndDncChecksRequired: true;
+  };
 }
 
 export interface Campaign {
@@ -344,4 +407,3 @@ export interface AgentVersion {
   publishedBy?: string;
   createdAt: string;
 }
-

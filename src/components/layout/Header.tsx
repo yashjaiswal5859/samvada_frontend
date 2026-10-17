@@ -4,12 +4,11 @@ import { Bell, Search, ChevronDown, User, Settings, CreditCard, Users, LogOut, M
 import { useAuth } from '../../contexts/AuthContext';
 
 interface HeaderProps {
-  onOpenCreateAgent?: () => void;
   onOpenMobileNav?: () => void;
   theme?: 'light' | 'dark';
 }
 
-export const Header: React.FC<HeaderProps> = ({ onOpenCreateAgent, onOpenMobileNav, theme = 'dark' }) => {
+export const Header: React.FC<HeaderProps> = ({ onOpenMobileNav, theme = 'dark' }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -22,7 +21,6 @@ export const Header: React.FC<HeaderProps> = ({ onOpenCreateAgent, onOpenMobileN
   const searchItems = [
     { label: 'Home', path: '/home', terms: 'home overview setup' },
     { label: 'Agents', path: '/agents', terms: 'agents assistant voice builder' },
-    { label: 'Create with AI', path: '/ai-studio', terms: 'create agent ai prompt' },
     { label: 'Knowledge base', path: '/knowledge', terms: 'knowledge documents upload' },
     { label: 'Contacts', path: '/contacts', terms: 'contacts audience customers' },
     { label: 'Campaigns', path: '/campaigns', terms: 'campaigns outbound calls' },

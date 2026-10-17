@@ -29,6 +29,22 @@ import {
   Activity,
   LogOut
 } from 'lucide-react';
+import {
+  ONBOARDING_STEPS,
+  ONBOARDING_USE_CASES,
+  ONBOARDING_LANGUAGES,
+  ONBOARDING_VOICES,
+  ONBOARDING_STYLES,
+} from '../../utils/constants';
+
+const USE_CASE_ICONS: Record<string, React.ElementType> = {
+  sales: TrendingUp,
+  support: Headphones,
+  appointment: Calendar,
+  inbound: PhoneCall,
+  surveys: ClipboardList,
+  operations: Users,
+};
 
 export const OnboardingWizardPage: React.FC = () => {
   const { user, logout, refreshUser } = useAuth();
@@ -78,76 +94,14 @@ export const OnboardingWizardPage: React.FC = () => {
   // Step 4: Integrations (optional)
   const [selectedIntegrations, setSelectedIntegrations] = useState<string[]>(['webhooks']);
 
-  const stepsList = [
-    { num: 1, title: 'Get started', desc: 'Basic information' },
-    { num: 2, title: 'Set up workspace', desc: 'Tell us about your use case' },
-    { num: 3, title: 'Choose voice', desc: 'Select language and voice' },
-    { num: 4, title: 'Integrate (optional)', desc: 'Connect your tools' },
-    { num: 5, title: 'Launch', desc: "You're all set!" },
-  ];
-
-  const useCases = [
-    {
-      id: 'sales',
-      title: 'Sales & Lead Generation',
-      desc: 'Qualify leads, book meetings and drive revenue.',
-      icon: TrendingUp,
-    },
-    {
-      id: 'support',
-      title: 'Customer Support',
-      desc: 'Handle customer queries, resolve issues and improve CSAT.',
-      icon: Headphones,
-    },
-    {
-      id: 'appointment',
-      title: 'Appointment Booking',
-      desc: 'Schedule appointments, reminders and follow-ups.',
-      icon: Calendar,
-    },
-    {
-      id: 'inbound',
-      title: 'Inbound Call Handling',
-      desc: 'Answer calls, route enquiries and capture information.',
-      icon: PhoneCall,
-    },
-    {
-      id: 'surveys',
-      title: 'Surveys & Feedback',
-      desc: 'Collect feedback, run surveys and analyze insights.',
-      icon: ClipboardList,
-    },
-    {
-      id: 'operations',
-      title: 'Internal Operations',
-      desc: 'Automate internal calls and workflows.',
-      icon: Users,
-    },
-  ];
-
-  const languages = [
-    { id: 'en-IN', name: '🇮🇳 English (India)', desc: 'Indian accent & nuances' },
-    { id: 'hi-IN', name: '🇮🇳 Hindi (हिन्दी)', desc: 'Pure conversational Hindi' },
-    { id: 'hinglish', name: '🇮🇳 Hinglish', desc: 'Bilingual Hindi-English mix' },
-    { id: 'en-US', name: '🇺🇸 English (US)', desc: 'Standard North American' },
-    { id: 'ta-IN', name: '🇮🇳 Tamil (தமிழ்)', desc: 'Regional South Indian' },
-  ];
-
-  const voices = [
-    { id: 'aarav', name: 'Aarav', gender: 'Male', tone: 'Natural' },
-    { id: 'diya', name: 'Diya', gender: 'Female', tone: 'Warm' },
-    { id: 'kabir', name: 'Kabir', gender: 'Male', tone: 'Professional' },
-    { id: 'meera', name: 'Meera', gender: 'Female', tone: 'Friendly' },
-    { id: 'rohan', name: 'Rohan', gender: 'Male', tone: 'Energetic' },
-    { id: 'priya', name: 'Priya', gender: 'Female', tone: 'Calm' },
-  ];
-
-  const styles = [
-    { id: 'balanced', name: 'Balanced', desc: 'Natural and versatile' },
-    { id: 'professional', name: 'Professional', desc: 'Formal and clear' },
-    { id: 'friendly', name: 'Friendly', desc: 'Warm and engaging' },
-    { id: 'energetic', name: 'Energetic', desc: 'Upbeat and lively' },
-  ];
+  const stepsList = ONBOARDING_STEPS;
+  const useCases = ONBOARDING_USE_CASES.map((uc) => ({
+    ...uc,
+    icon: USE_CASE_ICONS[uc.id] || Users,
+  }));
+  const languages = ONBOARDING_LANGUAGES;
+  const voices = ONBOARDING_VOICES;
+  const styles = ONBOARDING_STYLES;
 
   const playVoiceSample = (targetVoiceId?: string) => {
     const vId = targetVoiceId || selectedVoice;

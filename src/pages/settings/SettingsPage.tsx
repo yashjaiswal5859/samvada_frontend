@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   Building2,
   Globe,
@@ -61,12 +62,18 @@ interface TeamMember {
   lastActive: string;
 }
 
+type SettingsSection = 'general' | 'concurrency' | 'apikeys' | 'team' | 'billing' | 'security';
+
+const resolveSettingsSection = (pathname: string): SettingsSection =>
+  pathname === '/settings/telephony' ? 'concurrency' : 'general';
+
 export const SettingsPage: React.FC = () => {
+  const location = useLocation();
   const { user } = useAuth();
   const { organizationName } = useWorkspace();
   const toast = useToast();
 
-  const [activeTab, setActiveTab] = useState<'general' | 'concurrency' | 'apikeys' | 'team' | 'billing' | 'security'>('general');
+  const activeTab = resolveSettingsSection(location.pathname);
 
   // General Settings state
   const [orgName, setOrgName] = useState(user?.companyName || user?.organization?.name || organizationName || 'Samvada Enterprise Labs');
@@ -241,35 +248,6 @@ export const SettingsPage: React.FC = () => {
         subtitle="Manage telephony concurrency quotas, developer API keys, role permissions, compliance, and billing."
       />
 
-      {/* ── Subtabs Internal Mode Switcher ── */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto text-xs font-semibold">
-        {[
-          { id: 'general', label: 'Organization & Voice Specs', icon: Building2 },
-          { id: 'concurrency', label: 'Telephony & Concurrency Quotas', icon: Phone },
-          { id: 'apikeys', label: 'API Keys & Secrets', icon: Key },
-          { id: 'team', label: 'Team & Access Control', icon: Users },
-          { id: 'billing', label: 'Billing & Plan Limits', icon: DollarSign },
-          { id: 'security', label: 'Security & Compliance', icon: Shield },
-        ].map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${
-                isActive
-                  ? 'border-l-3 border-emerald-600 bg-emerald-50 text-emerald-950 font-bold shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-              }`}
-            >
-              <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-emerald-700' : 'text-slate-400'}`} />
-              <span>{tab.label}</span>
-            </button>
-          );
-        })}
-      </div>
-
       {/* ═══════════════════════════════════════════════════════════════ */}
       {/* TAB 1: GENERAL & ORGANIZATION SETTINGS */}
       {/* ═══════════════════════════════════════════════════════════════ */}
@@ -284,7 +262,7 @@ export const SettingsPage: React.FC = () => {
                 </div>
                 <button
                   onClick={handleSaveGeneral}
-                  className="px-4 py-2 rounded-lg bg-emerald-950 hover:bg-emerald-900 text-white text-xs font-semibold shadow-xs transition-all active:scale-95"
+                  className="min-h-9 px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold shadow-xs transition-all active:scale-95"
                 >
                   Save Changes
                 </button>
@@ -375,13 +353,14 @@ export const SettingsPage: React.FC = () => {
                     <Shield className="w-5 h-5 text-emerald-700" />
                     <div>
                       <span className="font-bold text-slate-900 text-xs block">Automatic PII / PCI Audio Redaction</span>
-                      <span className="text-[11px] text-slate-500">
+                      <span className="text-xs text-slate-600">
                         Automatically bleeps and masks credit cards, SSNs, and medical records before saving recordings.
                       </span>
                     </div>
                   </div>
                   <input
                     type="checkbox"
+                    aria-label="Enable personally identifiable information redaction"
                     checked={piiRedaction}
                     onChange={(e) => setPiiRedaction(e.target.checked)}
                     className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
@@ -393,13 +372,14 @@ export const SettingsPage: React.FC = () => {
                     <Radio className="w-5 h-5 text-emerald-700" />
                     <div>
                       <span className="font-bold text-slate-900 text-xs block">Dynamic Acoustic Background Noise Suppression</span>
-                      <span className="text-[11px] text-slate-500">
+                      <span className="text-xs text-slate-600">
                         Filters wind, car acoustics, and street noise before sending audio into the speech-to-text pipeline.
                       </span>
                     </div>
                   </div>
                   <input
                     type="checkbox"
+                    aria-label="Enable background noise suppression"
                     checked={noiseSuppression}
                     onChange={(e) => setNoiseSuppression(e.target.checked)}
                     className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
@@ -412,7 +392,7 @@ export const SettingsPage: React.FC = () => {
           {/* Right Summary Column */}
           <div className="lg:col-span-4 space-y-5">
             <div className="p-5 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-4">
-              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Voice Architecture Status</h3>
+              <h3 className="text-sm font-bold text-slate-900">Voice architecture status</h3>
               <div className="space-y-3 text-xs">
                 <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                   <span className="text-slate-500">Live Voice Cluster</span>
@@ -454,6 +434,14 @@ export const SettingsPage: React.FC = () => {
                 Export Complete Voice Vault (.zip)
               </button>
             </div>
+          </div>
+          <div className="lg:col-span-12 flex justify-end border-t border-slate-200 pt-4">
+            <button
+              onClick={handleSaveGeneral}
+              className="min-h-9 px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold shadow-xs transition-all active:scale-95"
+            >
+              Save Changes
+            </button>
           </div>
         </div>
       )}

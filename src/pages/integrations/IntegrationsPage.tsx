@@ -181,11 +181,11 @@ export const IntegrationsPage: React.FC = () => {
             <span>Documentation</span>
           </button>
           <button
-            onClick={() => setShowKeyModal(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-lg shadow-blue-600/25 transition-all cursor-pointer"
+            onClick={() => document.getElementById('api-keys')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl border border-zinc-700 bg-zinc-900/60 hover:bg-zinc-800 text-zinc-200 text-xs font-semibold transition-all cursor-pointer"
           >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Generate API Key</span>
+            <Key className="w-3.5 h-3.5" />
+            <span>View API Keys</span>
           </button>
         </div>
       </div>
@@ -264,7 +264,7 @@ export const IntegrationsPage: React.FC = () => {
                         </span>
                       </div>
                       <h4 className="text-xs font-bold text-white">{item.name}</h4>
-                      <p className="text-[11px] text-zinc-400 mt-0.5 leading-snug line-clamp-2">
+                      <p className="text-xs text-zinc-300 mt-1 leading-relaxed line-clamp-2">
                         {item.description}
                       </p>
                     </div>
@@ -302,11 +302,11 @@ export const IntegrationsPage: React.FC = () => {
         {/* Right Column: API Keys & Webhooks (4 Cols) */}
         <div className="lg:col-span-4 space-y-4">
           {/* API Keys Card */}
-          <div className="p-5 rounded-2xl bg-[#0c101b]/95 border border-zinc-800/80 space-y-4">
+          <div id="api-keys" className="p-5 rounded-2xl bg-[#0c101b]/95 border border-zinc-800/80 space-y-4 scroll-mt-8">
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="text-xs font-bold text-white">Developer API Keys</h4>
-                <p className="text-[11px] text-zinc-400">Bearer tokens for platform REST APIs.</p>
+                <p className="text-xs text-zinc-300 mt-1">Create a scoped key for secure server-to-server API access.</p>
               </div>
               <span className="text-xs font-mono text-zinc-400">({apiKeys.length})</span>
             </div>
@@ -336,7 +336,7 @@ export const IntegrationsPage: React.FC = () => {
               <div className="py-6 text-center text-xs text-zinc-500 space-y-1">
                 <Key className="w-5 h-5 mx-auto text-zinc-600 mb-1" />
                 <p>No API keys generated yet.</p>
-                <p className="text-[10px] text-zinc-600">Create a key to access APIs programmatically.</p>
+                <p className="text-xs text-zinc-400">Generate a key when you are ready to connect your application.</p>
               </div>
             ) : (
               <div className="space-y-2 text-xs">
@@ -365,9 +365,9 @@ export const IntegrationsPage: React.FC = () => {
 
             <button
               onClick={() => setShowKeyModal(true)}
-              className="w-full py-2 rounded-xl border border-dashed border-zinc-700 hover:border-blue-500 text-zinc-300 hover:text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+              className={`w-full min-h-9 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${apiKeys.length === 0 ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-600/20' : 'border border-dashed border-zinc-700 hover:border-blue-500 text-zinc-300 hover:text-white'}`}
             >
-              <Plus className="w-3.5 h-3.5" /> Generate New Key
+              <Plus className="w-3.5 h-3.5" /> {apiKeys.length === 0 ? 'Generate your first API key' : 'Generate New Key'}
             </button>
           </div>
 

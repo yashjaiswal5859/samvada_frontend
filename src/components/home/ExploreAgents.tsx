@@ -1,32 +1,10 @@
 import React, { useState } from 'react';
 import { Search, ArrowUpRight, ShieldCheck, Calendar, CreditCard, Headphones } from 'lucide-react';
 import { CustomSelect } from '../ui/CustomSelect';
-
-const INDUSTRY_TABS = [
-  'All',
-  'Insurance',
-  'Healthcare & Medical',
-  'Banking & Financial Services',
-  'Real Estate & Property Management',
-  'Retail & E-commerce',
-  'Home & Trade Services',
-  'Legal Services',
-  'Automotive',
-  'Technology & SaaS',
-  'Professional Services',
-  'Education & Training',
-];
-
-const USECASE_TABS = [
-  'All',
-  'Customer Support',
-  'Scheduling',
-  'Intake',
-  'Billing',
-  'Outreach',
-  'Receptionist',
-  'Sales',
-];
+import {
+  INDUSTRY_CATEGORIES as INDUSTRY_TABS,
+  USE_CASE_CATEGORIES as USECASE_TABS,
+} from '../../utils/constants';
 
 interface AgentTemplate {
   id: string;
@@ -94,28 +72,18 @@ export const ExploreAgents: React.FC<ExploreAgentsProps> = ({ onSelectTemplate }
     <div className="bg-white border border-slate-200/90 rounded-xl p-5 space-y-4 text-left shadow-xs">
       {/* Top Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
-        <div>
-          <h2 className="text-sm font-semibold text-slate-900 tracking-tight">Starter templates</h2>
-          <p className="text-xs text-slate-500 mt-0.5">Start with an example, then tailor it to your workflow.</p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              aria-label="Search starter templates"
-              placeholder="Search templates..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-slate-300 w-48 sm:w-56 transition-all"
-            />
+        <div className="flex items-center gap-2.5">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900 tracking-tight">Starter templates</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Start with an example, then tailor it to your workflow.</p>
           </div>
-
+          <span aria-live="polite" className="shrink-0 rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">
+            {filteredTemplates.length} {filteredTemplates.length === 1 ? 'template' : 'templates'}
+          </span>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 items-end">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(12rem,1.2fr)_auto] gap-2 items-end">
         <div>
           <CustomSelect
             label="Industry"
@@ -140,12 +108,22 @@ export const ExploreAgents: React.FC<ExploreAgentsProps> = ({ onSelectTemplate }
             size="sm"
           />
         </div>
-        <div className="flex items-end justify-between sm:justify-end gap-3 text-xs text-slate-500">
-          <span aria-live="polite">{filteredTemplates.length} {filteredTemplates.length === 1 ? 'template' : 'templates'}</span>
-          {(selectedIndustry !== 'All' || selectedUseCase !== 'All' || searchQuery) && (
-            <button type="button" onClick={() => { setSelectedIndustry('All'); setSelectedUseCase('All'); setSearchQuery(''); }} className="py-2 font-medium text-slate-700 underline underline-offset-2">Clear filters</button>
-          )}
+        <div className="relative">
+          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            aria-label="Search starter templates"
+            placeholder="Search templates..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-slate-300 transition-all"
+          />
         </div>
+        {(selectedIndustry !== 'All' || selectedUseCase !== 'All' || searchQuery) && (
+          <div className="flex items-end justify-start xl:justify-end gap-3 text-xs text-slate-500">
+            <button type="button" onClick={() => { setSelectedIndustry('All'); setSelectedUseCase('All'); setSearchQuery(''); }} className="min-h-9 py-2 font-medium text-slate-700 underline underline-offset-2">Clear filters</button>
+          </div>
+        )}
       </div>
 
       {/* Template Cards Grid */}
@@ -170,7 +148,7 @@ export const ExploreAgents: React.FC<ExploreAgentsProps> = ({ onSelectTemplate }
                   </div>
                   <ArrowUpRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-900 transition-colors shrink-0" />
                 </div>
-                <p className="text-[11px] text-slate-500 leading-relaxed">{template.description}</p>
+                <p className="text-sm text-slate-600 leading-relaxed">{template.description}</p>
               </div>
 
               <div className="flex items-center gap-2 mt-3 pt-2 border-t border-slate-100 text-[10px]">

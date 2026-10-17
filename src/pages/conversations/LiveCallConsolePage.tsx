@@ -203,6 +203,7 @@ export const LiveCallConsolePage: React.FC = () => {
           <Search className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
+            aria-label="Search live calls"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by phone number, contact, agent..."
@@ -214,7 +215,7 @@ export const LiveCallConsolePage: React.FC = () => {
       {/* 2-Column Main Split: Table + Realtime Monitor Panel */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Table Column */}
-        <div className="lg:col-span-8 bg-[#0c101b]/95 border border-zinc-800/80 rounded-2xl overflow-hidden shadow-xl">
+        <div className={`${filteredCalls.length === 0 ? 'lg:col-span-12' : 'lg:col-span-8'} bg-[#0c101b]/95 border border-zinc-800/80 rounded-2xl overflow-hidden shadow-xl`}>
           {isLoading ? (
             <div className="p-16 flex items-center justify-center">
               <Loader2 className="w-6 h-6 animate-spin text-zinc-500" />
@@ -225,22 +226,19 @@ export const LiveCallConsolePage: React.FC = () => {
                 <Activity className="w-7 h-7" />
               </div>
               <div className="max-w-md mx-auto">
-                <h3 className="text-base font-bold text-white">No active calls in progress</h3>
+                <h2 className="text-base font-bold text-white">
+                  {calls.length === 0 && !searchQuery ? 'No active calls in progress' : 'No matching calls'}
+                </h2>
                 <p className="text-xs text-zinc-400 mt-1">
-                  Active inbound telephony calls and outbound campaign dials will stream telemetry here in real time.
+                  {calls.length === 0 && !searchQuery
+                    ? 'Active inbound and outbound conversations will appear here when a call begins.'
+                    : 'Try a different search to find a call in this workspace.'}
                 </p>
               </div>
               <div className="flex items-center justify-center gap-3 pt-2">
                 <button
                   onClick={() => navigate('/calls')}
                   className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center gap-2 shadow-lg shadow-blue-600/25 transition-all cursor-pointer"
-                >
-                  <History className="w-3.5 h-3.5" />
-                  <span>View Call History</span>
-                </button>
-                <button
-                  onClick={() => navigate('/calls')}
-                  className="px-4 py-2 rounded-xl border border-zinc-700 bg-zinc-900/60 hover:bg-zinc-800 text-zinc-200 text-xs font-semibold transition-all cursor-pointer"
                 >
                   <History className="w-3.5 h-3.5" />
                   <span>View Call History</span>
@@ -310,7 +308,7 @@ export const LiveCallConsolePage: React.FC = () => {
         </div>
 
         {/* Right Detail Panel */}
-        <div className="lg:col-span-4 p-5 rounded-2xl bg-[#0c101b]/95 border border-zinc-800/80 space-y-4">
+        {filteredCalls.length > 0 && <div className="lg:col-span-4 p-5 rounded-2xl bg-[#0c101b]/95 border border-zinc-800/80 space-y-4">
           {selectedCall ? (
             <>
               <div className="flex items-start justify-between">
@@ -409,7 +407,7 @@ export const LiveCallConsolePage: React.FC = () => {
               </p>
             </div>
           )}
-        </div>
+        </div>}
       </div>
     </div>
   );

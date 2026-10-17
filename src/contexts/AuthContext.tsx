@@ -6,8 +6,6 @@ import {
   fetchMyWorkspaces,
   requestLoginOTP,
   verifyLoginOTP,
-  requestRegisterOTP,
-  verifyRegisterOTP,
   logoutUser,
 } from '../api/auth';
 import { apiClient, setAccessToken, setRefreshToken, setActiveOrgId, setActiveWorkspaceId } from '../api/client';
@@ -35,8 +33,6 @@ interface AuthContextType {
   activeWorkspace: Workspace | null;
   loginWithOTP: (email: string) => Promise<string>;
   verifyLogin: (requestId: string, otp: string, loginChallenge?: string) => Promise<User | { redirectTo: string }>;
-  registerWithOTP: (email: string, displayName?: string) => Promise<string>;
-  verifyRegister: (requestId: string, otp: string, loginChallenge?: string) => Promise<User | { redirectTo: string }>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   switchWorkspace: (workspaceId: string) => void;
@@ -227,24 +223,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return u;
   };
 
-  const registerWithOTP = async (email: string, displayName?: string): Promise<string> => {
-    const res = await requestRegisterOTP(email, displayName);
-    return res.requestId;
-  };
 
-  const verifyRegister = async (
-    requestId: string,
-    otp: string,
-    loginChallenge?: string
-  ): Promise<User | { redirectTo: string }> => {
-    const res = await verifyRegisterOTP(requestId, otp, loginChallenge);
-    if (res.redirectTo) {
-      return { redirectTo: res.redirectTo };
-    }
-    await refreshUser();
-    const u = await fetchMe();
-    return u;
-  };
 
   const logout = async () => {
     try {
@@ -299,8 +278,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         activeWorkspace,
         loginWithOTP,
         verifyLogin,
-        registerWithOTP,
-        verifyRegister,
         logout,
         refreshUser,
         switchWorkspace,

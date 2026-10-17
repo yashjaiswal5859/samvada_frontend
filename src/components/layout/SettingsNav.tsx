@@ -9,7 +9,8 @@ import {
   FileText,
   Bell,
   Key,
-  Layers
+  Layers,
+  Phone
 } from 'lucide-react';
 
 interface SettingsNavProps {
@@ -23,12 +24,13 @@ export const SettingsNav: React.FC<SettingsNavProps> = ({
 }) => {
   const tabs = [
     { label: 'General', path: '/settings', icon: Building2 },
+    { label: 'Telephony Capacity', path: '/settings/telephony', icon: Phone },
     { label: 'Workspaces', path: '/workspaces', icon: Layers },
     { label: 'Team Members', path: '/settings/team', icon: Users2 },
-    { label: 'Billing & Quotas', path: '/settings/billing', icon: CreditCard },
+    { label: 'Billing & Usage', path: '/settings/billing', icon: CreditCard },
     { label: 'Security & BAA', path: '/settings/security', icon: Shield },
     { label: 'Audit Logs', path: '/settings/audit-logs', icon: FileText },
-    { label: 'Notifications', path: '/notifications', icon: Bell },
+    { label: 'Notifications & Alerts', path: '/notifications', icon: Bell },
     { label: 'Integrations & Keys', path: '/integrations', icon: Key },
   ];
 

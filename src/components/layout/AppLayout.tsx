@@ -72,7 +72,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, theme }) => {
       />
       <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden bg-white">
         {/* Samvada AI Mission Control Telemetry HUD (Distinctive Top Bar) */}
-        {isLight && (
+        {isLight && location.pathname !== '/home' && (
           <div className="min-h-9 px-3 sm:px-6 py-1 bg-slate-50/90 border-b border-slate-200/80 flex items-center justify-between text-[11px] select-none shrink-0 z-20 overflow-hidden">
             {/* Left: Engine & Telephony Trunk Status */}
             <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
@@ -104,7 +104,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, theme }) => {
 
               <button
                 onClick={() => setIsCreateAgentOpen(true)}
-                className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] transition-colors shadow-2xs"
+                className="hidden sm:inline-flex min-h-8 items-center gap-1 px-3 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition-colors shadow-2xs"
               >
                 <span>+ New Agent</span>
               </button>
@@ -114,7 +114,6 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, theme }) => {
 
         <Header
           theme={isLight ? 'light' : 'dark'}
-          onOpenCreateAgent={() => setIsCreateAgentOpen(true)}
           onOpenMobileNav={() => setIsMobileNavOpen(true)}
         />
         <main className="flex-1 min-w-0 p-3 sm:p-6 lg:p-8 overflow-y-auto bg-white">{children}</main>
@@ -123,8 +122,10 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, theme }) => {
       <CreateAgentModal
         isOpen={isCreateAgentOpen}
         onClose={() => setIsCreateAgentOpen(false)}
-        onSuccess={(agent) => {
-          navigate(`/agents/${agent.id}`);
+        onSuccess={(_agent) => {
+          if (location.pathname !== '/agents') {
+            navigate('/agents');
+          }
         }}
       />
     </div>

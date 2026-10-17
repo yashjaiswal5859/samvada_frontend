@@ -2,7 +2,58 @@ import { defineConfig, Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
-// Middleware to detect unauthenticated requests on protected routes and 302 redirect to /login
+// Validate if the access token in cookies is active (unexpired & verified by backend)
+async function isTokenActive(cookieHeader: string): Promise<boolean> {
+  if (!cookieHeader || !cookieHeader.includes('access_token=')) {
+    return false;
+  }
+
+  // 1. Fast decode & expiration check for JWT access_token
+  const match = cookieHeader.match(/(?:^|;\s*)access_token=([^;]+)/);
+  if (!match || !match[1]) return false;
+  const token = decodeURIComponent(match[1].trim());
+
+  // Check if JWT payload is well-formed and unexpired
+  const parts = token.split('.');
+  if (parts.length === 3) {
+    try {
+      const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
+      if (payload.exp && payload.exp * 1000 <= Date.now()) {
+        // Token has expired - not active!
+        return false;
+      }
+    } catch {
+      return false;
+    }
+  } else {
+    // Malformed token - not active
+    return false;
+  }
+
+  // 2. Cryptographic & session validity check against ABS service
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 1200);
+    const resp = await fetch('http://localhost:8082/api/v1/user/me', {
+      headers: {
+        Cookie: cookieHeader,
+        Authorization: `Bearer ${token}`,
+      },
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    if (resp.ok) {
+      const body = (await resp.json()) as { success?: boolean };
+      return Boolean(body?.success);
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+// Middleware to detect unauthenticated requests on protected routes and redirect active sessions to /home
 function authRedirectPlugin(): Plugin {
   return {
     name: 'auth-redirect-plugin',
@@ -23,9 +74,25 @@ function authRedirectPlugin(): Plugin {
           return next();
         }
 
+        const cookieHeader = req.headers.cookie || '';
+
+        // If user accesses root "/", verify if token is ACTUALLY ACTIVE before redirecting to /home
+        if (url === '/') {
+          const active = await isTokenActive(cookieHeader);
+          if (active) {
+            res.writeHead(302, {
+              Location: '/home',
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+            });
+            res.end();
+            return;
+          }
+          // If token is not active or absent, show landing page normally
+          return next();
+        }
+
         // Public routes that do not require authentication
         if (
-          url === '/' ||
           url === '/landing' ||
           url === '/demo' ||
           url === '/login' ||
@@ -35,17 +102,13 @@ function authRedirectPlugin(): Plugin {
           return next();
         }
 
-        // Protected routes (/onboarding, /onboarding/*, /home, /dashboard, /, etc.)
-        const cookieHeader = req.headers.cookie || '';
+        // Protected routes (/onboarding, /home, /dashboard, etc.)
         const cookies = cookieHeader.split(';').map((c) => c.trim());
-        const hasValidAccessToken = cookies.some(
-          (c) => c.startsWith('access_token=') && c.split('=')[1]?.length > 10
-        );
-        const hasValidRefreshToken = cookies.some(
-          (c) => c.startsWith('refresh_token=') && c.split('=')[1]?.length > 10
+        const hasTokenHint = cookies.some(
+          (c) => (c.startsWith('access_token=') || c.startsWith('refresh_token=')) && c.split('=')[1]?.length > 10
         );
 
-        if (!hasValidAccessToken && !hasValidRefreshToken) {
+        if (!hasTokenHint) {
           res.writeHead(302, {
             Location: '/login',
             'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -135,6 +198,10 @@ export default defineConfig({
         changeOrigin: true,
       },
       '/api/v1/webhooks': {
+        target: 'http://localhost:8082',
+        changeOrigin: true,
+      },
+      '/api/v1/integrations': {
         target: 'http://localhost:8082',
         changeOrigin: true,
       },

@@ -4,7 +4,6 @@ import {
   LayoutDashboard,
   Home,
   Bot,
-  Sparkles,
   BookOpen,
   Boxes,
   Phone,
@@ -326,31 +325,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ theme = 'dark', mobileOpen = f
               </div>
             )}
 
-            {/* AI Agent Chat Studio */}
-            <NavLink
-              to="/ai-studio"
-              className={({ isActive }) =>
-                `group relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
-                  isActive
-                    ? isLight
-                      ? 'border-l-3 border-emerald-600 bg-emerald-50/80 text-emerald-950 shadow-2xs'
-                      : 'bg-emerald-950/40 text-emerald-300 border-l-2 border-emerald-500 font-bold shadow-sm'
-                    : isLight
-                      ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                      : 'text-zinc-300 hover:text-white hover:bg-zinc-800/40'
-                }`
-              }
-              title="Create with AI Chat"
-            >
-              {({ isActive }) => (
-                <>
-                  {isActive && <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-md bg-emerald-600" />}
-                  <Sparkles className={`w-4 h-4 shrink-0 ${isActive ? (isLight ? 'text-emerald-700' : 'text-emerald-400') : 'text-emerald-600'}`} />
-                  {!sidebarCollapsed && <span>Create with AI</span>}
-                </>
-              )}
-            </NavLink>
-
             {/* My Agents */}
             <NavLink to="/agents" className={linkClass} title="My Voice Agents">
               {({ isActive }) => (
@@ -444,7 +418,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ theme = 'dark', mobileOpen = f
                   {!sidebarCollapsed && (
                     <div className="flex items-center justify-between flex-1">
                       <span>Phone Numbers</span>
-                      <span className="text-[10px] text-slate-400 font-mono">
+                      <span className={`min-w-5 h-5 px-1.5 rounded-full text-[10px] font-semibold font-mono flex items-center justify-center ${
+                        isLight ? 'bg-slate-100 border border-slate-200 text-slate-600' : 'bg-zinc-800 border border-zinc-700 text-zinc-300'
+                      }`}>
                         {currentWorkspace.assignedPhoneNumbers?.length ?? 0}
                       </span>
                     </div>
@@ -485,7 +461,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ theme = 'dark', mobileOpen = f
             </NavLink>
 
             {/* Call History (Recordings & Transcripts) */}
-            <NavLink to="/calls" className={linkClass} title="Call History">
+            <NavLink to="/calls" end className={linkClass} title="Call History">
               {({ isActive }) => (
                 <>
                   {isActive && <span className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-emerald-600 rounded-r-md" />}

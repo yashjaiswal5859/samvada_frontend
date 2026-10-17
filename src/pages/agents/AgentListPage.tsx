@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Users,
   Phone,
@@ -26,6 +26,7 @@ import {
   ShieldCheck,
   Headphones,
   Sliders,
+  SlidersHorizontal,
   Volume2,
   ExternalLink,
   Layers,
@@ -35,7 +36,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
 import { useWorkspace } from '../../contexts/WorkspaceContext';
-import { getAgents, createAgent } from '../../api/agents';
+import { getAgents, getAgent, createAgent } from '../../api/agents';
 import { getAnalyticsSummary } from '../../api/analytics';
 import { Agent, AnalyticsSummary } from '../../types';
 import { formatDuration, formatDate } from '../../utils/formatters';
@@ -63,147 +64,13 @@ interface AgentItem {
   integrations: string;
   createdAt: string;
   updatedAt: string;
+  rawAgent: Agent;
 }
-
-interface MarketplaceTemplate {
-  id: string;
-  name: string;
-  role: string;
-  category: 'support' | 'sales' | 'healthcare' | 'fintech' | 'automotive' | 'hospitality';
-  categoryLabel: string;
-  avatar: string;
-  model: string;
-  voiceProvider: string;
-  voiceName: string;
-  language: string;
-  description: string;
-  greetingSample: string;
-  callsRouted: string;
-  turnLatency: string;
-  csatRating: string;
-  complianceBadges: string[];
-  systemPromptPreset: string;
-}
-
-const MARKETPLACE_TEMPLATES: MarketplaceTemplate[] = [
-  {
-    id: 'tpl-maya-hospitality',
-    name: 'Maya',
-    role: 'Luxury Hospitality Concierge',
-    category: 'hospitality',
-    categoryLabel: 'Hospitality & Travel',
-    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80',
-    model: 'GPT-4o Realtime',
-    voiceProvider: 'Cartesia Sonic',
-    voiceName: 'British Luxury (Sophia)',
-    language: 'English, Hindi',
-    description: 'Manages 5-star resort reservations, bespoke dining bookings, room service orders, and VIP guest queries with warm sophistication.',
-    greetingSample: 'Good evening. Welcome to the Grand Horizon Resort. My name is Maya. How may I orchestrate your stay today?',
-    callsRouted: '34.2k calls',
-    turnLatency: '180ms P50',
-    csatRating: '4.96 / 5.0',
-    complianceBadges: ['SOC-2 Type II', 'GDPR', 'PCI-DSS L1'],
-    systemPromptPreset: 'You are Maya, an ultra-luxury resort concierge. Maintain an immaculate, courteous, and anticipatory demeanor. Assist guests with suite bookings, dining reservations, and personalized itinerary requests.',
-  },
-  {
-    id: 'tpl-david-healthcare',
-    name: 'David',
-    role: 'Clinical Triage & Patient Intake',
-    category: 'healthcare',
-    categoryLabel: 'Healthcare & Clinical',
-    avatar: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=300&q=80',
-    model: 'Claude 3.5 Sonnet',
-    voiceProvider: 'ElevenLabs Turbo v2.5',
-    voiceName: 'Gentle Clinical (James)',
-    language: 'English (US)',
-    description: 'HIPAA-compliant patient screening, medical record intake, symptom pre-evaluation, and automated clinic calendar scheduling.',
-    greetingSample: 'Hello, this is David with Providence Health. I can help you schedule your appointment or securely update your medical intake records. How may I assist you today?',
-    callsRouted: '19.8k calls',
-    turnLatency: '210ms P50',
-    csatRating: '4.94 / 5.0',
-    complianceBadges: ['HIPAA Compliant', 'SOC-2 Type II', 'BAA Ready'],
-    systemPromptPreset: 'You are David, a clinical intake assistant for Providence Health. Maintain strict HIPAA confidentiality. Confirm patient DOB, collect symptoms with clinical clarity, and guide patient scheduling.',
-  },
-  {
-    id: 'tpl-elena-fintech',
-    name: 'Elena',
-    role: 'Fintech Debt Resolution & KYC',
-    category: 'fintech',
-    categoryLabel: 'Fintech & Collections',
-    avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=300&q=80',
-    model: 'DeepSeek-V3',
-    voiceProvider: 'PlayHT 2.0',
-    voiceName: 'Authoritative Empathic (Elena)',
-    language: 'English, Spanish',
-    description: 'Handles compassionate payment restructuring, instant identity verification, and PCI-DSS compliant installment agreements.',
-    greetingSample: 'Hello, this is Elena on behalf of Apex Financial. I am calling regarding your account update and can assist you with confidential, flexible payment options today.',
-    callsRouted: '42.1k calls',
-    turnLatency: '220ms P50',
-    csatRating: '4.89 / 5.0',
-    complianceBadges: ['PCI-DSS L1', 'SOC-2 Type II', 'FCRA Compliant'],
-    systemPromptPreset: 'You are Elena, a debt resolution specialist. You must remain empathetic, professional, and compliant with consumer debt protection regulations. Offer structured payment plans.',
-  },
-  {
-    id: 'tpl-marcus-automotive',
-    name: 'Marcus',
-    role: 'Automotive Dealership & Service',
-    category: 'automotive',
-    categoryLabel: 'Automotive & Dealership',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80',
-    model: 'Llama 3.3 70B',
-    voiceProvider: 'Cartesia Sonic',
-    voiceName: 'Energetic Pro (Marcus)',
-    language: 'English (US)',
-    description: 'Inbound scheduler for vehicle maintenance, warranty questions, repair shop status updates, and trade-in appraisals.',
-    greetingSample: 'Thanks for calling Apex Motors Service Center. My name is Marcus. Are you looking to schedule routine maintenance or check on an active vehicle repair?',
-    callsRouted: '16.4k calls',
-    turnLatency: '195ms P50',
-    csatRating: '4.91 / 5.0',
-    complianceBadges: ['SOC-2 Type II', 'GDPR Compliant'],
-    systemPromptPreset: 'You are Marcus, service director at Apex Motors. Ask for vehicle make, model, year, and mileage. Book service appointments into the dealer management system.',
-  },
-  {
-    id: 'tpl-priya-ecommerce',
-    name: 'Priya',
-    role: 'E-Commerce VIP Concierge & Returns',
-    category: 'support',
-    categoryLabel: 'Customer Support',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
-    model: 'GPT-4o Realtime',
-    voiceProvider: 'ElevenLabs Turbo v2.5',
-    voiceName: 'Warm & Attentive (Priya)',
-    language: 'English, Hindi',
-    description: 'Resolves shipment inquiries, processing real-time returns, exchanges, warranty claims, and Shopify order lookup with zero hold time.',
-    greetingSample: 'Hi there! This is Priya from Lumina Goods. I can look up your recent order or initiate a hassle-free exchange right now. What can I do for you?',
-    callsRouted: '51.3k calls',
-    turnLatency: '205ms P50',
-    csatRating: '4.95 / 5.0',
-    complianceBadges: ['SOC-2 Type II', 'GDPR', 'PCI-DSS'],
-    systemPromptPreset: 'You are Priya, customer experience lead. Verify customer order numbers, check real-time tracking, and process return labels with utmost warmth and efficiency.',
-  },
-  {
-    id: 'tpl-liam-sales',
-    name: 'Liam',
-    role: 'B2B Enterprise SDR & Inbound Qualifier',
-    category: 'sales',
-    categoryLabel: 'Inbound Sales & SDR',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80',
-    model: 'Claude 3.5 Sonnet',
-    voiceProvider: 'PlayHT 2.0',
-    voiceName: 'Executive SDR (Liam)',
-    language: 'English (US)',
-    description: 'Engages high-intent website inbound leads, analyzes BANT qualification criteria, and coordinates calendar bookings directly with Account Executives.',
-    greetingSample: 'Hello! This is Liam from CloudScale Systems. I noticed you requested information on our enterprise voice pipeline. Do you have two minutes to discuss your current telephony volume?',
-    callsRouted: '28.7k calls',
-    turnLatency: '190ms P50',
-    csatRating: '4.93 / 5.0',
-    complianceBadges: ['SOC-2 Type II', 'GDPR Compliant'],
-    systemPromptPreset: 'You are Liam, an enterprise sales development representative. Qualify leads by asking about monthly call volume, existing SIP infrastructure, and timeline before booking calendar slots.',
-  },
-];
+import { MarketplaceTemplate, MARKETPLACE_TEMPLATES } from '../../utils/constants';
 
 export const AgentListPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const toast = useToast();
   const { currentWorkspace, organizationName } = useWorkspace();
 
@@ -218,9 +85,18 @@ export const AgentListPage: React.FC = () => {
   const [marketplaceCategory, setMarketplaceCategory] = useState<string>('all');
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
 
-  // Creation modal state
+  // Creation & Configure modal states
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [selectedAgentForEdit, setSelectedAgentForEdit] = useState<Agent | null>(null);
+  const [isConfigureModalOpen, setIsConfigureModalOpen] = useState(false);
   const [isCloning, setIsCloning] = useState(false);
+
+  useEffect(() => {
+    if (new URLSearchParams(location.search).get('create') === '1') {
+      setIsCreateModalOpen(true);
+      navigate('/agents', { replace: true });
+    }
+  }, [location.search, navigate]);
 
   useEffect(() => {
     let isMounted = true;
@@ -259,6 +135,7 @@ export const AgentListPage: React.FC = () => {
             integrations: a.phoneNumber ? `SIP: ${a.phoneNumber}` : 'WebRTC Gateway',
             createdAt: formatDate(a.createdAt),
             updatedAt: formatDate(a.updatedAt),
+            rawAgent: a,
           }));
 
           setAgents(mapped);
@@ -275,6 +152,53 @@ export const AgentListPage: React.FC = () => {
       isMounted = false;
     };
   }, [currentWorkspace.id]);
+
+  const refreshAgents = () => {
+    getAgents().then((apiAgents) => {
+      if (Array.isArray(apiAgents)) {
+        const mapped: AgentItem[] = apiAgents.map((a: Agent) => ({
+          id: a.id,
+          workspaceId: a.workspaceId || currentWorkspace.id,
+          name: a.name,
+          isPrimary: false,
+          avatar: a.avatar || '',
+          description: a.description || a.role || 'Voice AI Assistant',
+          systemPrompt: a.systemPrompt || '',
+          phoneNumber: a.phoneNumber || '',
+          knowledgeBaseIds: a.knowledgeBaseIds || [],
+          tags: [a.role || 'Voice Assistant', a.language, a.status].filter(Boolean),
+          language: a.language || 'English (India)',
+          voice: a.voiceName || 'Rachel',
+          calls: (a.totalCalls || 0).toLocaleString(),
+          conversion: `${a.successRate || 0}%`,
+          avgDuration: formatDuration(a.avgDurationSec || 0),
+          isActive: a.status === 'active',
+          model: a.model || 'GPT-4o Realtime',
+          kb: (a.knowledgeBaseIds && a.knowledgeBaseIds.length > 0)
+            ? `${a.knowledgeBaseIds.length} Linked Base(s)`
+            : 'None linked',
+          integrations: a.phoneNumber ? `SIP: ${a.phoneNumber}` : 'WebRTC Gateway',
+          createdAt: formatDate(a.createdAt),
+          updatedAt: formatDate(a.updatedAt),
+          rawAgent: a,
+        }));
+        setAgents(mapped);
+      }
+    });
+  };
+
+  const handleOpenConfigure = async (agentItem: AgentItem) => {
+    setSelectedAgentForEdit(agentItem.rawAgent);
+    setIsConfigureModalOpen(true);
+    try {
+      const fullAgent = await getAgent(agentItem.id);
+      if (fullAgent) {
+        setSelectedAgentForEdit(fullAgent);
+      }
+    } catch (e) {
+      // rawAgent is fallback
+    }
+  };
 
   // Audio sample playback using browser Web Speech API
   const handlePlayVoiceSample = (id: string, text: string) => {
@@ -307,12 +231,26 @@ export const AgentListPage: React.FC = () => {
         role: template.role,
         voiceId: template.voiceName,
         model: template.model,
-        systemPrompt: template.systemPromptPreset,
+        description: template.description,
+        guardrails: {
+          redactSensitiveData: true,
+          groundAnswersInKnowledge: true,
+          restrictedTopics: [],
+          prohibitedPromises: [],
+          escalationTriggers: [],
+          aiDisclosure: '',
+          recordingDisclosure: '',
+        },
+        complianceFlags: {
+          aiDisclosureRequired: true,
+          recordingDisclosureRequired: true,
+          outboundDndDncChecksRequired: true,
+        },
       });
 
       toast.success(`Agent "${template.name}" cloned into ${currentWorkspace.name}`);
-      // Redirect directly to Agent Studio
-      navigate(`/agents/${created.id}`);
+      setActiveSubtab('my-agents');
+      refreshAgents();
     } catch (err) {
       console.error(err);
       toast.error('Failed to clone template into workspace');
@@ -370,8 +308,6 @@ export const AgentListPage: React.FC = () => {
             <span>{organizationName || 'Samvada Enterprise Labs'}</span>
             <span>/</span>
             <span className="text-slate-800 font-semibold">{currentWorkspace.name}</span>
-            <span className="text-slate-400">•</span>
-            <span className="text-slate-400">{currentWorkspace.id}</span>
           </div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Voice Agents</h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
@@ -382,24 +318,11 @@ export const AgentListPage: React.FC = () => {
         {/* Top Header Actions (Forest Slate & Emerald) */}
         <div className="flex items-center gap-2.5 self-start sm:self-auto">
           <button
-            onClick={() => setActiveSubtab('marketplace')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
-              activeSubtab === 'marketplace'
-                ? 'bg-emerald-50 border-emerald-300 text-emerald-900 shadow-2xs'
-                : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 shadow-2xs'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Marketplace</span>
-            <span className="px-1.5 py-0.2 bg-emerald-100 text-emerald-800 rounded text-[10px] font-bold">24</span>
-          </button>
-
-          <button
             onClick={() => setIsCreateModalOpen(true)}
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-950 hover:bg-emerald-900 text-white text-xs font-semibold shadow-xs transition-all cursor-pointer active:scale-[0.985]"
           >
             <Plus className="w-3.5 h-3.5 text-emerald-300" />
-            <span>+ Create Voice Agent</span>
+            <span>Create Agent</span>
           </button>
         </div>
       </div>
@@ -444,6 +367,7 @@ export const AgentListPage: React.FC = () => {
             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
+              aria-label={activeSubtab === 'my-agents' ? 'Search agents' : 'Search templates'}
               placeholder={activeSubtab === 'my-agents' ? 'Search my agents...' : 'Search templates by role or model...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -459,7 +383,7 @@ export const AgentListPage: React.FC = () => {
       {activeSubtab === 'my-agents' && (
         <div className="space-y-6">
           {/* Workspace metrics */}
-          <div className="grid grid-cols-1 min-[480px]:grid-cols-2 lg:grid-cols-4 gap-4">
+          {!isLoading && agents.length > 0 && <div className="grid grid-cols-1 min-[480px]:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Total Agents */}
             <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex items-center gap-3.5">
               <div className="w-10 h-10 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700 shrink-0">
@@ -528,10 +452,15 @@ export const AgentListPage: React.FC = () => {
                 <p className="text-xs text-slate-500 mt-0.5">Agents in draft</p>
               </div>
             </div>
-          </div>
+          </div>}
 
           {/* If No Agents Configured Yet: Signature Anti-Copy Concentric Acoustic Soundwave Empty State */}
-          {filteredMyAgents.length === 0 ? (
+          {isLoading ? (
+            <div className="rounded-xl border border-slate-200 bg-white p-10 text-center shadow-2xs" role="status" aria-live="polite">
+              <div className="mx-auto mb-3 h-6 w-6 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-700" />
+              <p className="text-sm font-semibold text-slate-800">Loading voice agents…</p>
+            </div>
+          ) : filteredMyAgents.length === 0 ? (
             <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center shadow-2xs flex flex-col items-center justify-center relative overflow-hidden">
               {/* Subtle background acoustic waves */}
               <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-40">
@@ -552,31 +481,43 @@ export const AgentListPage: React.FC = () => {
               </div>
 
               <div className="relative z-10 max-w-md space-y-2">
-                <h3 className="text-lg font-bold text-slate-900 tracking-tight">
-                  No voice agents configured yet
-                </h3>
+                <h2 className="text-lg font-bold text-slate-900 tracking-tight">
+                  {agents.length === 0 ? 'Create your first voice agent' : 'No agents match these filters'}
+                </h2>
                 <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
-                  Deploy your first conversational voice agent to start routing inbound telephony calls, screening patient intake, or running automated outbound workflows.
+                  {agents.length === 0
+                    ? 'Start with a guided draft or choose a proven template, then tailor the voice and workflow to your business.'
+                    : 'Try a different search or status filter to find an agent in this workspace.'}
                 </p>
               </div>
 
               {/* Dual Action CTAs */}
               <div className="relative z-10 flex flex-wrap items-center justify-center gap-3 mt-6">
-                <button
-                  onClick={() => setIsCreateModalOpen(true)}
-                  className="px-4 py-2.5 rounded-lg bg-emerald-950 hover:bg-emerald-900 text-white text-xs font-semibold shadow-xs flex items-center gap-2 transition-all cursor-pointer active:scale-95"
-                >
-                  <Plus className="w-4 h-4 text-emerald-300" />
-                  <span>Build from Scratch</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveSubtab('marketplace')}
-                  className="px-4 py-2.5 rounded-lg border border-emerald-300 bg-emerald-50/80 hover:bg-emerald-100 text-emerald-900 text-xs font-semibold shadow-2xs flex items-center gap-2 transition-all cursor-pointer active:scale-95"
-                >
-                  <Sparkles className="w-4 h-4 text-emerald-600" />
-                  <span>Browse 24 Marketplace Blueprints</span>
-                </button>
+                {agents.length === 0 ? (
+                  <>
+                    <button
+                      onClick={() => setIsCreateModalOpen(true)}
+                      className="px-4 py-2.5 rounded-lg bg-emerald-950 hover:bg-emerald-900 text-white text-xs font-semibold shadow-xs flex items-center gap-2 transition-all cursor-pointer active:scale-95"
+                    >
+                      <Plus className="w-4 h-4 text-emerald-300" />
+                      <span>Create Agent</span>
+                    </button>
+                    <button
+                      onClick={() => setActiveSubtab('marketplace')}
+                      className="px-4 py-2.5 rounded-lg border border-emerald-300 bg-emerald-50/80 hover:bg-emerald-100 text-emerald-900 text-xs font-semibold shadow-2xs flex items-center gap-2 transition-all cursor-pointer active:scale-95"
+                    >
+                      <Sparkles className="w-4 h-4 text-emerald-600" />
+                      <span>Browse templates</span>
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => { setSearchQuery(''); setStatusFilter('All Statuses'); }}
+                    className="px-4 py-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-colors"
+                  >
+                    Clear search and filters
+                  </button>
+                )}
               </div>
             </div>
           ) : (
@@ -595,7 +536,11 @@ export const AgentListPage: React.FC = () => {
                           {agent.name.slice(0, 2).toUpperCase()}
                         </div>
                         <div>
-                          <h4 className="text-sm font-bold text-slate-900 tracking-tight flex items-center gap-1.5">
+                          <h4
+                            onClick={() => navigate(`/agents/${agent.id}`)}
+                            className="text-sm font-bold text-slate-900 tracking-tight flex items-center gap-1.5 cursor-pointer hover:text-emerald-700 transition-colors"
+                            title="Open Studio & Configuration"
+                          >
                             <span>{agent.name}</span>
                             {agent.isActive && (
                               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Active in telephony route" />
@@ -642,23 +587,15 @@ export const AgentListPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Actions Bar */}
-                  <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                  {/* Actions Bar: Single Unified Configure & Test Button */}
+                  <div className="mt-5 pt-3 border-t border-slate-100 flex items-center">
                     <button
                       onClick={() => navigate(`/agents/${agent.id}`)}
-                      className="flex-1 py-1.5 px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                      className="w-full py-2.5 px-4 rounded-xl bg-emerald-50 hover:bg-emerald-100/90 text-emerald-950 border border-emerald-200/80 text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-[0.985]"
+                      title="Open Studio to Configure Agent and Test in Real-Time"
                     >
-                      <Sliders className="w-3.5 h-3.5 text-emerald-700" />
-                      <span>Configure Studio</span>
-                    </button>
-
-                    <button
-                      onClick={() => navigate(`/agents/${agent.id}?tab=test`)}
-                      className="py-1.5 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer"
-                      title="Test Audio Stream"
-                    >
-                      <Headphones className="w-3.5 h-3.5" />
-                      <span>Test</span>
+                      <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-700" />
+                      <span>Configure & Test</span>
                     </button>
                   </div>
                 </div>
@@ -831,13 +768,17 @@ export const AgentListPage: React.FC = () => {
         </div>
       )}
 
-      {/* Enterprise Multi-Path Creation Modal */}
+      {/* Enterprise Multi-Path Creation & Configuration Modal */}
       <CreateAgentModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onSuccess={(created) => {
-          setAgents((prev) => [created as any, ...prev]);
-          navigate(`/agents/${created.id}`);
+        isOpen={isCreateModalOpen || isConfigureModalOpen}
+        onClose={() => {
+          setIsCreateModalOpen(false);
+          setIsConfigureModalOpen(false);
+          setSelectedAgentForEdit(null);
+        }}
+        agent={selectedAgentForEdit}
+        onSuccess={(_agent) => {
+          refreshAgents();
         }}
       />
     </div>
