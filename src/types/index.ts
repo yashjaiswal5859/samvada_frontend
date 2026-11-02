@@ -158,6 +158,7 @@ export interface CreateAgentPayload {
   status?: 'active' | 'draft';
   telephonyProvider?: string;
   phoneNumberId?: string;
+  phoneNumber?: string;
   escalationPhoneNumber?: string;
   sttProvider?: string;
   ttsProvider?: string;

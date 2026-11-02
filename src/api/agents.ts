@@ -88,14 +88,88 @@ export const getAgentById = async (id: string): Promise<Agent | undefined> => {
 
 export const getAgent = getAgentById;
 
+export const toBackendAgentPayload = (p: Partial<Agent> | CreateAgentPayload): Record<string, any> => {
+  const out: Record<string, any> = {};
+  if (p.name !== undefined) out.name = p.name;
+  if (p.role !== undefined) out.role = p.role;
+  if (p.description !== undefined) out.description = p.description;
+  if (p.systemPrompt !== undefined) out.system_prompt = p.systemPrompt;
+  if ((p as any).system_prompt !== undefined) out.system_prompt = (p as any).system_prompt;
+  if (p.voiceId !== undefined) out.voice_id = p.voiceId;
+  if ((p as any).voice_id !== undefined) out.voice_id = (p as any).voice_id;
+  if (p.voiceName !== undefined) out.voice_name = p.voiceName;
+  if ((p as any).voice_name !== undefined) out.voice_name = (p as any).voice_name;
+  if ((p as any).voiceProvider !== undefined) out.voice_provider = (p as any).voiceProvider;
+  if ((p as any).ttsProvider !== undefined && !out.voice_provider) out.voice_provider = (p as any).ttsProvider;
+  if ((p as any).voice_provider !== undefined) out.voice_provider = (p as any).voice_provider;
+  if (p.language !== undefined) out.language = p.language;
+  if (p.model !== undefined) out.model = p.model;
+  if (p.status !== undefined) out.status = p.status;
+  if ((p as any).avatar !== undefined) out.avatar_url = (p as any).avatar;
+  if ((p as any).avatarUrl !== undefined) out.avatar_url = (p as any).avatarUrl;
+  if ((p as any).avatar_url !== undefined) out.avatar_url = (p as any).avatar_url;
+  if (p.phoneNumberId !== undefined) out.phone_number_id = p.phoneNumberId;
+  if ((p as any).phone_number_id !== undefined) out.phone_number_id = (p as any).phone_number_id;
+  if ((p as any).phoneNumber !== undefined) out.assigned_phone = (p as any).phoneNumber;
+  if ((p as any).assigned_phone !== undefined) out.assigned_phone = (p as any).assigned_phone;
+  if (p.knowledgeBaseIds !== undefined) out.knowledge_base_ids = p.knowledgeBaseIds;
+  if ((p as any).knowledge_base_ids !== undefined) out.knowledge_base_ids = (p as any).knowledge_base_ids;
+  if (p.toolAllowlist !== undefined) out.tool_allowlist = p.toolAllowlist;
+  if ((p as any).tool_allowlist !== undefined) out.tool_allowlist = (p as any).tool_allowlist;
+  if (p.escalationPhoneNumber !== undefined) out.escalation_phone_number = p.escalationPhoneNumber;
+  if ((p as any).escalation_phone_number !== undefined) out.escalation_phone_number = (p as any).escalation_phone_number;
+  if (p.greetingText !== undefined) out.greeting_text = p.greetingText;
+  if ((p as any).greeting_text !== undefined) out.greeting_text = (p as any).greeting_text;
+  if (p.inboundGreeting !== undefined) out.inbound_greeting = p.inboundGreeting;
+  if ((p as any).inbound_greeting !== undefined) out.inbound_greeting = (p as any).inbound_greeting;
+  if (p.outboundGreeting !== undefined) out.outbound_greeting = p.outboundGreeting;
+  if ((p as any).outbound_greeting !== undefined) out.outbound_greeting = (p as any).outbound_greeting;
+  if (p.greetingMode !== undefined) out.greeting_mode = p.greetingMode;
+  if ((p as any).greeting_mode !== undefined) out.greeting_mode = (p as any).greeting_mode;
+  if (p.callDirection !== undefined) out.call_direction = p.callDirection;
+  if ((p as any).call_direction !== undefined) out.call_direction = (p as any).call_direction;
+  if ((p as any).primaryLanguage !== undefined) out.primary_language = (p as any).primaryLanguage;
+  if ((p as any).primary_language !== undefined) out.primary_language = (p as any).primary_language;
+  if ((p as any).additionalLanguages !== undefined) out.additional_languages = (p as any).additionalLanguages;
+  if ((p as any).additional_languages !== undefined) out.additional_languages = (p as any).additional_languages;
+  if ((p as any).supportedLanguages !== undefined) out.supported_languages = (p as any).supportedLanguages;
+  if ((p as any).supported_languages !== undefined) out.supported_languages = (p as any).supported_languages;
+  if ((p as any).telephonyProvider !== undefined) out.telephony_provider = (p as any).telephonyProvider;
+  if ((p as any).telephony_provider !== undefined) out.telephony_provider = (p as any).telephony_provider;
+  if ((p as any).sttProvider !== undefined) out.stt_provider = (p as any).sttProvider;
+  if ((p as any).stt_provider !== undefined) out.stt_provider = (p as any).stt_provider;
+  if ((p as any).ttsProvider !== undefined) out.tts_provider = (p as any).ttsProvider;
+  if ((p as any).tts_provider !== undefined) out.tts_provider = (p as any).tts_provider;
+  if ((p as any).sttKeyterms !== undefined) out.stt_keyterms = (p as any).sttKeyterms;
+  if ((p as any).stt_keyterms !== undefined) out.stt_keyterms = (p as any).stt_keyterms;
+  if ((p as any).speakingRate !== undefined) out.speaking_rate = (p as any).speakingRate;
+  if ((p as any).speaking_rate !== undefined) out.speaking_rate = (p as any).speaking_rate;
+  if ((p as any).pauseBeforeSpeakingMs !== undefined) out.pause_before_speaking_ms = (p as any).pauseBeforeSpeakingMs;
+  if ((p as any).pause_before_speaking_ms !== undefined) out.pause_before_speaking_ms = (p as any).pauseBeforeSpeakingMs;
+  if ((p as any).allowInterruptions !== undefined) out.allow_interruptions = (p as any).allowInterruptions;
+  if ((p as any).allow_interruptions !== undefined) out.allow_interruptions = (p as any).allow_interruptions;
+  if ((p as any).silenceBehavior !== undefined) out.silence_behavior = (p as any).silenceBehavior;
+  if ((p as any).silence_behavior !== undefined) out.silence_behavior = (p as any).silence_behavior;
+  if ((p as any).silenceTimeoutSeconds !== undefined) out.silence_timeout_seconds = (p as any).silenceTimeoutSeconds;
+  if ((p as any).silence_timeout_seconds !== undefined) out.silence_timeout_seconds = (p as any).silence_timeout_seconds;
+  if ((p as any).voiceBehavior !== undefined) out.voice_behavior = (p as any).voiceBehavior;
+  if ((p as any).voice_behavior !== undefined) out.voice_behavior = (p as any).voice_behavior;
+  if ((p as any).guardrails !== undefined) out.guardrails = (p as any).guardrails;
+  if ((p as any).complianceFlags !== undefined) out.compliance_flags = (p as any).complianceFlags;
+  if ((p as any).compliance_flags !== undefined) out.compliance_flags = (p as any).compliance_flags;
+  return out;
+};
+
 export const createAgent = async (payload: CreateAgentPayload): Promise<Agent> => {
-  const res = await apiClient.post<APIEnvelope<any>>(getScopedAgentUrl(), payload);
+  const backendPayload = toBackendAgentPayload(payload);
+  const res = await apiClient.post<APIEnvelope<any>>(getScopedAgentUrl(), backendPayload);
   const item = requireData(res.data?.success, res.data?.data, 'Creating agent');
   return mapAgentFromBackend(item);
 };
 
 export const updateAgent = async (id: string, updates: Partial<Agent>): Promise<Agent> => {
-  const res = await apiClient.patch<APIEnvelope<any>>(getScopedAgentUrl(`/${id}`), updates);
+  const backendPayload = toBackendAgentPayload(updates);
+  const res = await apiClient.patch<APIEnvelope<any>>(getScopedAgentUrl(`/${id}`), backendPayload);
   const data = requireData(res.data?.success, res.data?.data, 'Updating agent');
   return mapAgentFromBackend(data);
 };
@@ -118,13 +192,15 @@ export const getAgentVersions = async (agentId: string): Promise<AgentVersion[]>
 };
 
 export const publishAgentVersion = async (agentId: string, changeSummary: string): Promise<AgentVersion> => {
-  const res = await apiClient.post<APIEnvelope<AgentVersion>>(getScopedAgentUrl(`/${agentId}/publish`), { changeSummary });
+  const res = await apiClient.post<APIEnvelope<AgentVersion>>(getScopedAgentUrl(`/${agentId}/publish`), {
+    change_summary: changeSummary,
+  });
   return requireData(res.data?.success, res.data?.data, 'Publishing agent version');
 };
 
 export const rollbackAgentVersion = async (agentId: string, versionNum: number): Promise<Agent> => {
   const res = await apiClient.post<APIEnvelope<Agent>>(getScopedAgentUrl(`/${agentId}/rollback`), {
-    target_version: versionNum,
+    version_num: versionNum,
   });
   return requireData(res.data?.success, res.data?.data, 'Rolling back agent');
 };

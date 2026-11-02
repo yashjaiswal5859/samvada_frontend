@@ -1,4 +1,4 @@
-import { apiClient, setAccessToken, setRefreshToken, getRefreshToken } from './client';
+import { apiClient, setAccessToken } from './client';
 import { APIEnvelope, OTPResponse, TokenResponse, VerifyOTPResponse, User, Organization, Workspace } from '../types';
 
 export const requestLoginOTP = async (email: string): Promise<OTPResponse> => {
@@ -20,9 +20,6 @@ export const verifyLoginOTP = async (requestId: string, otp: string, loginChalle
   }
   if (res.data.data.accessToken) {
     setAccessToken(res.data.data.accessToken);
-  }
-  if (res.data.data.refreshToken) {
-    setRefreshToken(res.data.data.refreshToken);
   }
   return res.data.data;
 };
@@ -56,10 +53,8 @@ export const fetchMyWorkspaces = async (orgId?: string): Promise<Workspace[]> =>
 
 export const logoutUser = async (): Promise<void> => {
   try {
-    const refreshToken = getRefreshToken();
-    await apiClient.post('/api/v1/auth/logout', { refreshToken });
+    await apiClient.post('/api/v1/auth/logout');
   } finally {
     setAccessToken(null);
-    setRefreshToken(null);
   }
 };

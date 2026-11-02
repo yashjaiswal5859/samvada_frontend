@@ -8,7 +8,7 @@ import {
   verifyLoginOTP,
   logoutUser,
 } from '../api/auth';
-import { apiClient, setAccessToken, setRefreshToken, setActiveOrgId, setActiveWorkspaceId } from '../api/client';
+import { apiClient, setAccessToken, setActiveOrgId, setActiveWorkspaceId } from '../api/client';
 import {
   saveSessionContext,
   loadSessionContext,
@@ -233,7 +233,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } finally {
       applyTenantContext(null, null, []);
       setAccessToken(null);
-      setRefreshToken(null);
     }
   };
 

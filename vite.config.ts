@@ -92,13 +92,7 @@ function authRedirectPlugin(): Plugin {
         }
 
         // Public routes that do not require authentication
-        if (
-          url === '/landing' ||
-          url === '/demo' ||
-          url === '/login' ||
-          url === '/register' ||
-          url.startsWith('/verify')
-        ) {
+        if (url === '/login') {
           return next();
         }
 

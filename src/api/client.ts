@@ -9,7 +9,6 @@ import { getSessionItem, setSessionItem, clearSessionStorage, SESSION_KEYS } fro
 // =============================================================================
 
 let inMemoryAccessToken: string | null = null;
-let inMemoryRefreshToken: string | null = null;
 let inMemoryWorkspaceId: string | null = getSessionItem(SESSION_KEYS.WORKSPACE_ID);
 let inMemoryOrgId: string | null = getSessionItem(SESSION_KEYS.ORG_ID);
 
@@ -18,12 +17,6 @@ export const setAccessToken = (token: string | null) => {
 };
 
 export const getAccessToken = () => inMemoryAccessToken;
-
-export const setRefreshToken = (token: string | null) => {
-  inMemoryRefreshToken = token;
-};
-
-export const getRefreshToken = () => inMemoryRefreshToken;
 
 export const setActiveWorkspaceId = (id: string | null) => {
   inMemoryWorkspaceId = id;
@@ -82,37 +75,32 @@ const processQueue = (error: any, token: string | null = null) => {
   failedQueue = [];
 };
 
+export const isPublicRoute = (path?: string): boolean => {
+  if (!path && typeof window !== 'undefined') {
+    path = window.location.pathname;
+  }
+  if (!path) return true;
+  const clean = path.split('?')[0];
+  return clean === '/' || clean === '/login';
+};
+
+const redirectToLoginIfProtected = () => {
+  if (typeof window !== 'undefined' && !isPublicRoute(window.location.pathname)) {
+    window.location.href = '/login';
+  }
+};
+
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError<APIEnvelope<unknown>>) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
-
+    const status = error.response?.status;
     const errorData = (error.response?.data as any)?.error;
-    const requireLogin = errorData?.require_login || errorData?.login;
+    const isTokenExpired = errorData?.code === 'TOKEN_EXPIRED';
 
-    // Fast-path: if backend explicitly signals require_login, clear session and redirect immediately
-    if (requireLogin) {
-      setAccessToken(null);
-      setRefreshToken(null);
-      clearSessionStorage();
-      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-        window.location.href = '/login';
-      }
-      const message = errorData?.message || 'Session expired. Please log in again.';
-      const err = new Error(message);
-      (err as any).response = error.response;
-      return Promise.reject(err);
-    }
-
-    // Transparent token refresh on 401 (excluding auth initiation endpoints)
-    const isAuthRoute =
-      originalRequest?.url?.includes('/api/v1/auth/login') ||
-      originalRequest?.url?.includes('/api/v1/auth/register') ||
-      originalRequest?.url?.includes('/api/v1/auth/refresh');
-
-    if (error.response?.status === 401 && originalRequest && !originalRequest._retry && !isAuthRoute) {
+    // 1. Transparent token refresh ONLY when backend explicitly signals TOKEN_EXPIRED
+    if (status === 401 && originalRequest && !originalRequest._retry && isTokenExpired) {
       if (isRefreshing) {
-        // Enqueue concurrent requests while refresh is in flight
         return new Promise<string>((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
@@ -129,18 +117,15 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const refreshResponse = await axios.post<APIEnvelope<{ accessToken: string; refreshToken?: string; expiresIn: number }>>(
+        const refreshResponse = await axios.post<APIEnvelope<{ accessToken: string; expiresIn: number }>>(
           `${apiClient.defaults.baseURL || ''}/api/v1/auth/refresh`,
-          { refreshToken: inMemoryRefreshToken },
+          {},
           { withCredentials: true }
         );
 
         if (refreshResponse.data.success && refreshResponse.data.data?.accessToken) {
           const newToken = refreshResponse.data.data.accessToken;
           setAccessToken(newToken);
-          if (refreshResponse.data.data.refreshToken) {
-            setRefreshToken(refreshResponse.data.data.refreshToken);
-          }
           processQueue(null, newToken);
           if (originalRequest.headers) {
             originalRequest.headers.Authorization = `Bearer ${newToken}`;
@@ -149,26 +134,25 @@ apiClient.interceptors.response.use(
         } else {
           processQueue(new Error('Token refresh rejected by server'), null);
           setAccessToken(null);
-          setRefreshToken(null);
           clearSessionStorage();
-          if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-            window.location.href = '/login';
-          }
+          redirectToLoginIfProtected();
         }
       } catch (refreshErr) {
         processQueue(refreshErr, null);
         setAccessToken(null);
-        setRefreshToken(null);
         clearSessionStorage();
-        if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-          window.location.href = '/login';
-        }
+        redirectToLoginIfProtected();
       } finally {
         isRefreshing = false;
       }
+    } else if (status === 401) {
+      // 2. Unauthenticated (token missing, invalid, or expired session without refresh)
+      setAccessToken(null);
+      clearSessionStorage();
+      redirectToLoginIfProtected();
     }
 
-    const message = error.response?.data?.error?.message || error.message || 'An unexpected error occurred';
+    const message = errorData?.message || error.message || 'An unexpected error occurred';
     const err = new Error(message);
     (err as any).response = error.response;
     return Promise.reject(err);

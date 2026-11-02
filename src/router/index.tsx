@@ -113,7 +113,7 @@ export const AppRouter: React.FC = () => {
         <Routes>
         {/* Public Enterprise Landing Page / Root */}
         <Route path="/" element={<RootRoute />} />
-        <Route path="/landing" element={<LandingPage />} />
+        <Route path="/landing" element={<Navigate to="/" replace />} />
 
         {/* Public Auth Routes */}
         <Route
