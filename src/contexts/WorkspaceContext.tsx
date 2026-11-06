@@ -20,7 +20,7 @@ export interface Workspace {
   escalationMembersCount: number | null;
 }
 
-export type UserRole = 'org_admin' | 'workspace_admin' | 'swiggy_admin';
+export type UserRole = 'org_admin' | 'workspace_admin' | 'platform_admin';
 
 interface WorkspaceContextType {
   currentWorkspace: Workspace;
@@ -93,12 +93,16 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
   }, [currentWorkspaceId]);
 
   const roleValue = String(authActiveWs?.role || user?.role || 'workspace_admin').toLowerCase();
-  const currentUserRole: UserRole = roleValue.includes('swiggy') ? 'swiggy_admin' : roleValue.includes('org') ? 'org_admin' : 'workspace_admin';
+  const currentUserRole: UserRole = roleValue.includes('platform') || roleValue.includes('owner') || roleValue === 'admin'
+    ? 'platform_admin'
+    : roleValue.includes('org')
+    ? 'org_admin'
+    : 'workspace_admin';
 
   // Search query for workspace search bar in sidebar
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  const isOrgAdmin = currentUserRole === 'org_admin' || currentUserRole === 'swiggy_admin';
+  const isOrgAdmin = currentUserRole === 'org_admin' || currentUserRole === 'platform_admin';
 
   // Persist active workspace to sessionStorage and notify AuthContext
   const switchWorkspace = (workspaceId: string) => {

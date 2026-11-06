@@ -100,15 +100,15 @@ export const DashboardOverviewPage: React.FC = () => {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">Dashboard</h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-            Welcome back, {displayName}! Here's what's happening with your voice AI workspace.
+          <h1 className="text-xl font-semibold text-slate-900 tracking-tight">Overview</h1>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Real-time call metrics, active voice agents, and telephony dispatch volume.
           </p>
         </div>
         <div className="flex items-center gap-3 shrink-0">
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 shadow-sm">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-700 shadow-2xs">
             <Calendar className="w-3.5 h-3.5 text-slate-500" />
-            <span className="font-medium font-mono text-[11px]">{getDateRangeLabel(timeRange)}</span>
+            <span className="font-mono text-[11px] font-medium">{getDateRangeLabel(timeRange)}</span>
           </div>
 
           <div className="w-36">
@@ -129,26 +129,26 @@ export const DashboardOverviewPage: React.FC = () => {
       </div>
 
       {/* 3-Step Guided Quick Start Card */}
-      <div className="bg-white border border-slate-200/80 rounded-xl p-5 shadow-sm">
+      <div className="bg-white border border-slate-200/90 rounded-xl p-5 shadow-2xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shrink-0">
-              <Sparkles className="w-4 h-4 text-blue-600" />
+            <div className="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 shrink-0">
+              <Bot className="w-4 h-4 text-slate-800" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-                <span>Get started with voice AI</span>
+              <h2 className="text-sm font-semibold text-slate-900">
+                Setup and deployment checklist
               </h2>
-              <p className="text-xs text-slate-500">Three steps to launch your first voice workflow.</p>
+              <p className="text-xs text-slate-500">Three operational steps to provision your voice agent workflow.</p>
             </div>
           </div>
           <button
             type="button"
             aria-expanded={isSetupExpanded}
             onClick={() => setSetupExpandedOverride((expanded) => !(expanded ?? (totalCalls === 0)))}
-            className="self-start sm:self-auto min-h-8 px-3 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors"
+            className="self-start sm:self-auto min-h-8 px-3 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-medium text-slate-700 transition-colors"
           >
-            {isSetupExpanded ? 'Hide steps' : 'Show setup steps'}
+            {isSetupExpanded ? 'Hide checklist' : 'Show checklist'}
           </button>
         </div>
 
@@ -156,75 +156,75 @@ export const DashboardOverviewPage: React.FC = () => {
           {/* Step 1 */}
           <Link
             to="/agents"
-            className="group p-3.5 rounded-xl bg-slate-50/70 hover:bg-slate-100/70 border border-slate-200/80 hover:border-slate-300 transition-all flex flex-col justify-between"
+            className="group p-3.5 rounded-lg bg-slate-50 hover:bg-slate-100/80 border border-slate-200/90 hover:border-slate-300 transition-colors flex flex-col justify-between"
           >
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-semibold font-mono uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                  Step 1 • Build Agent
+                <span className="text-[10px] font-mono text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200">
+                  Step 1 · Agent profile
                 </span>
-                <Sparkles className="w-3.5 h-3.5 text-emerald-600 group-hover:scale-110 transition-transform" />
+                <Bot className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-700 transition-colors" />
               </div>
-              <h3 className="text-xs sm:text-sm font-semibold text-slate-900 group-hover:text-emerald-700 transition-colors">
-                Create Your First Agent
+              <h3 className="text-xs sm:text-sm font-medium text-slate-900">
+                Create voice agent
               </h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Start an agent draft from a short brief, then add knowledge sources and guardrails.
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Define agent persona, language dialect, and core telephony prompts.
               </p>
             </div>
-            <div className="pt-2.5 flex items-center gap-1.5 text-xs font-medium text-emerald-700">
+            <div className="pt-2.5 flex items-center gap-1.5 text-xs font-medium text-slate-900">
               <span>Open Voice Agents</span>
-              <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+              <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
             </div>
           </Link>
 
           {/* Step 2 */}
           <Link
             to="/knowledge"
-            className="group p-3.5 rounded-xl bg-slate-50/70 hover:bg-slate-100/70 border border-slate-200/80 hover:border-slate-300 transition-all flex flex-col justify-between"
+            className="group p-3.5 rounded-lg bg-slate-50 hover:bg-slate-100/80 border border-slate-200/90 hover:border-slate-300 transition-colors flex flex-col justify-between"
           >
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-semibold font-mono uppercase tracking-wider text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
-                  Step 2 • Add Knowledge
+                <span className="text-[10px] font-mono text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200">
+                  Step 2 · Knowledge base
                 </span>
-                <Sparkles className="w-3.5 h-3.5 text-blue-600 group-hover:scale-110 transition-transform" />
+                <Bot className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-700 transition-colors" />
               </div>
-              <h3 className="text-xs sm:text-sm font-semibold text-slate-900 group-hover:text-blue-700 transition-colors">
-                Add your business information
+              <h3 className="text-xs sm:text-sm font-medium text-slate-900">
+                Connect documents &amp; FAQs
               </h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Give your agent trusted answers with documents, FAQs, or website content.
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Provide grounding data, policy manuals, and website URLs.
               </p>
             </div>
-            <div className="pt-2.5 flex items-center gap-1.5 text-xs font-medium text-blue-700">
+            <div className="pt-2.5 flex items-center gap-1.5 text-xs font-medium text-slate-900">
               <span>Open Knowledge Base</span>
-              <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+              <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
             </div>
           </Link>
 
           {/* Step 3 */}
           <Link
             to="/contacts"
-            className="group p-3.5 rounded-xl bg-slate-50/70 hover:bg-slate-100/70 border border-slate-200/80 hover:border-slate-300 transition-all flex flex-col justify-between"
+            className="group p-3.5 rounded-lg bg-slate-50 hover:bg-slate-100/80 border border-slate-200/90 hover:border-slate-300 transition-colors flex flex-col justify-between"
           >
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-semibold font-mono uppercase tracking-wider text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
-                  Step 3 • Add Contacts
+                <span className="text-[10px] font-mono text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200">
+                  Step 3 · Audience
                 </span>
-                <Megaphone className="w-3.5 h-3.5 text-purple-600 group-hover:scale-110 transition-transform" />
+                <Users className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-700 transition-colors" />
               </div>
-              <h3 className="text-xs sm:text-sm font-semibold text-slate-900 group-hover:text-purple-700 transition-colors">
-                Import your audience
+              <h3 className="text-xs sm:text-sm font-medium text-slate-900">
+                Import contacts
               </h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Add or import people before you prepare an outbound campaign.
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Import phone leads or configure inbound phone number routing.
               </p>
             </div>
-            <div className="pt-2.5 flex items-center gap-1.5 text-xs font-medium text-purple-700">
+            <div className="pt-2.5 flex items-center gap-1.5 text-xs font-medium text-slate-900">
               <span>Open Contacts</span>
-              <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+              <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
             </div>
           </Link>
         </div>}

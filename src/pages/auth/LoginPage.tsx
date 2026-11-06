@@ -172,58 +172,53 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8f9fb] flex flex-col" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
+    <div className="min-h-screen bg-[#fafafa] flex flex-col" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
 
-      {/* Subtle top gradient line */}
-      <div className="h-px w-full bg-gradient-to-r from-transparent via-indigo-300/60 to-transparent" />
-
-      {/* â”€â”€ Header â”€â”€ */}
-      <header className="w-full border-b border-gray-200/80 bg-white/90 backdrop-blur-md">
+      {/* Header */}
+      <header className="w-full border-b border-slate-200/90 bg-white">
         <div className="max-w-7xl mx-auto px-6 sm:px-10 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 rounded-xl bg-[#0f172a] flex items-center justify-center gap-[3px]">
+            <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center gap-[3px]">
               <div className="w-[3px] h-3 bg-white/70 rounded-full" />
               <div className="w-[3px] h-5 bg-white rounded-full" />
               <div className="w-[3px] h-3.5 bg-white/70 rounded-full" />
               <div className="w-[3px] h-2 bg-white/50 rounded-full" />
             </div>
             <div>
-              <span className="text-[15px] font-bold text-[#0f172a] tracking-tight">Samvada AI</span>
-              <p className="text-[10px] text-gray-400 leading-none mt-0.5">Voice AI for a more human world</p>
+              <span className="text-[15px] font-semibold text-slate-900 tracking-tight">Samvada</span>
+              <p className="text-[10px] text-slate-500 leading-none mt-0.5 font-mono">Telephony Voice AI</p>
             </div>
           </Link>
 
-          <div className="flex items-center gap-2 text-sm text-gray-500">
-            <span className="hidden sm:inline">Need help?</span>
-            <a href="mailto:support@samvada.ai" className="font-semibold text-indigo-600 hover:text-indigo-700 transition-colors text-xs sm:text-sm">
+          <div className="flex items-center gap-2 text-xs text-slate-500">
+            <span className="hidden sm:inline">Need assistance?</span>
+            <a href="mailto:support@samvada.ai" className="font-medium text-slate-800 hover:text-slate-950 transition-colors">
               support@samvada.ai
             </a>
           </div>
         </div>
       </header>
+
       {/* Split Main */}
       <main className="flex-1 flex">
 
-        {/* LEFT: Light panel with live wave card */}
-        <div className="hidden lg:flex lg:flex-1 bg-gradient-to-br from-slate-50 via-blue-50/60 to-indigo-50 relative flex-col items-center justify-center px-12 xl:px-20 py-16 overflow-hidden border-r border-gray-200">
-          <div className="absolute -top-20 right-1/4 w-[400px] h-[280px] bg-indigo-100/60 rounded-full blur-[100px] pointer-events-none" />
-          <div className="absolute -bottom-20 -left-10 w-[350px] h-[350px] bg-blue-100/50 rounded-full blur-[120px] pointer-events-none" />
-          <div className="relative z-10 w-full max-w-lg space-y-8">
-            <div className="space-y-3">
-              <h2 className="text-4xl font-extrabold text-[#0f172a] tracking-tight leading-[1.1]">
-                Conversations<br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600">that work.</span>
+        {/* LEFT: Technical telephony preview */}
+        <div className="hidden lg:flex lg:flex-1 bg-slate-50 relative flex-col items-center justify-center px-12 xl:px-20 py-16 overflow-hidden border-r border-slate-200/90">
+          <div className="relative z-10 w-full max-w-lg space-y-6">
+            <div className="space-y-2">
+              <h2 className="text-3xl font-semibold text-slate-900 tracking-tight leading-snug">
+                Autonomous voice agents for enterprise telephony
               </h2>
-              <p className="text-base text-gray-500 leading-relaxed max-w-sm">
-                Build, deploy and scale AI voice agents for real business conversations.
+              <p className="text-sm text-slate-600 leading-relaxed max-w-md">
+                Sub-second latency voice pipelines for inbound customer support, outbound qualification, and live CRM actions.
               </p>
             </div>
             <LiveVoiceDemoCard />
           </div>
         </div>
 
-        {/* RIGHT: Light auth panel */}
-        <div className="flex-1 lg:max-w-[520px] xl:max-w-[560px] flex items-center justify-center bg-white px-10 sm:px-14 py-12">
+        {/* RIGHT: Auth panel */}
+        <div className="flex-1 lg:max-w-[500px] xl:max-w-[540px] flex items-center justify-center bg-white px-10 sm:px-14 py-12">
         <div className="w-full max-w-[400px]">
 
 
@@ -276,7 +271,7 @@ export const LoginPage: React.FC = () => {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="you@company.com"
-                        className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-sm text-[#0f172a] placeholder:text-gray-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                        className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-white border border-slate-300 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900/10 transition-colors"
                       />
                     </div>
                   </div>
@@ -284,10 +279,10 @@ export const LoginPage: React.FC = () => {
                   <button
                     type="submit"
                     disabled={isLoading || !email}
-                    className="w-full py-2.5 px-4 rounded-xl bg-emerald-950 hover:bg-emerald-900 text-white text-sm font-semibold flex items-center justify-center gap-2 transition-all shadow-sm disabled:opacity-50 cursor-pointer"
+                    className="w-full py-2.5 px-4 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium flex items-center justify-center gap-2 transition-colors shadow-2xs disabled:opacity-50 cursor-pointer"
                   >
                     {isLoading ? (
-                      <><Loader2 className="w-4 h-4 animate-spin" /><span>Sending code…</span></>
+                      <><Loader2 className="w-4 h-4 animate-spin" /><span>Sending code...</span></>
                     ) : (
                       <><span>Continue</span><ArrowRight className="w-4 h-4" /></>
                     )}
@@ -299,10 +294,10 @@ export const LoginPage: React.FC = () => {
                       devLogin?.();
                       navigate('/agents');
                     }}
-                    className="w-full py-2 px-4 rounded-xl border border-emerald-300 bg-emerald-50/80 hover:bg-emerald-100/90 text-emerald-950 text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-2xs cursor-pointer"
+                    className="w-full py-2 px-4 rounded-lg border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-800 text-xs font-medium flex items-center justify-center gap-2 transition-colors cursor-pointer"
                   >
-                    <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Instant Sandbox Access (Dev Demo)</span>
+                    <span className="font-mono text-[10px] text-slate-500">[demo]</span>
+                    <span>Instant sandbox access (Dev Demo)</span>
                   </button>}
 
                   {/* Divider */}
@@ -320,7 +315,7 @@ export const LoginPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => { window.location.href = '/api/v1/auth/google/login'; }}
-                      className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-gray-50 hover:bg-gray-100 border border-gray-200 text-xs font-semibold text-gray-700 transition-colors cursor-pointer"
+                      className="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 text-xs font-medium text-slate-700 transition-colors cursor-pointer"
                     >
                       <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                         <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z" />
@@ -334,7 +329,7 @@ export const LoginPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => { window.location.href = '/api/v1/auth/oauth/login'; }}
-                      className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-gray-50 hover:bg-gray-100 border border-gray-200 text-xs font-semibold text-gray-700 transition-colors cursor-pointer"
+                      className="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 text-xs font-medium text-slate-700 transition-colors cursor-pointer"
                     >
                       <svg className="w-4 h-4 shrink-0" viewBox="0 0 21 21">
                         <rect x="1" y="1" width="9" height="9" fill="#f25022" />
@@ -346,21 +341,18 @@ export const LoginPage: React.FC = () => {
                     </button>
                   </div>
 
-                  <p className="text-[11px] text-gray-400 text-center pt-2 leading-relaxed">
+                  <p className="text-[11px] text-slate-400 text-center pt-2 leading-relaxed">
                     By continuing, you agree to our{' '}
-                    <a href="#" className="underline hover:text-gray-600">Terms of Service</a>{' '}
+                    <a href="#" className="underline hover:text-slate-600">Terms of Service</a>{' '}
                     and{' '}
-                    <a href="#" className="underline hover:text-gray-600">Privacy Policy</a>.
+                    <a href="#" className="underline hover:text-slate-600">Privacy Policy</a>.
                   </p>
-
-                  {/* Trust badges */}
-                  
                 </form>
               ) : (
-                /* â”€â”€ STEP 2: OTP â”€â”€ */
-                <form onSubmit={handleVerifyOTP} className="space-y-5">
+                /* Step 2: OTP */
+                <form onSubmit={handleVerifyOTP} className="space-y-4">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-4 text-center">
+                    <label className="block text-xs font-medium text-slate-700 mb-3 text-center">
                       Enter the 6-digit verification code
                     </label>
                     <div className="flex items-center justify-center gap-2 sm:gap-2.5">
@@ -374,7 +366,7 @@ export const LoginPage: React.FC = () => {
                           value={digit}
                           onChange={(e) => handleOtpChange(index, e.target.value)}
                           onKeyDown={(e) => handleKeyDown(index, e)}
-                          className="w-11 h-13 sm:w-12 sm:h-14 text-center text-xl font-bold rounded-xl bg-gray-50 border border-gray-200 text-[#0f172a] focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
+                          className="w-10 h-12 sm:w-11 sm:h-12 text-center text-lg font-mono font-medium rounded-lg bg-white border border-slate-300 text-slate-900 focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900/10 transition-colors"
                         />
                       ))}
                     </div>
@@ -382,57 +374,57 @@ export const LoginPage: React.FC = () => {
 
                   {/* Resend timer */}
                   <div className="flex items-center justify-between text-xs px-1">
-                    <span className="text-gray-400">
+                    <span className="text-slate-400">
                       {canResend ? "Didn't receive code?" : `Resend code in ${countdown}s`}
                     </span>
                     <button
                       type="button"
                       disabled={!canResend || isLoading}
                       onClick={handleResendOTP}
-                      className={`font-semibold flex items-center gap-1 transition-colors ${
+                      className={`font-medium flex items-center gap-1 transition-colors ${
                         canResend
-                          ? 'text-indigo-600 hover:text-indigo-700 cursor-pointer'
-                          : 'text-gray-300 cursor-not-allowed'
+                          ? 'text-slate-900 hover:underline cursor-pointer'
+                          : 'text-slate-300 cursor-not-allowed'
                       }`}
                     >
                       <RefreshCw className="w-3 h-3" />
-                      <span>Resend Code</span>
+                      <span>Resend code</span>
                     </button>
                   </div>
 
                   <button
                     type="submit"
                     disabled={isLoading || otpDigits.join('').length < 6}
-                    className="w-full py-2.5 px-4 rounded-xl bg-[#0f172a] hover:bg-[#1e293b] text-white text-sm font-semibold flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer disabled:opacity-50"
+                    className="w-full py-2.5 px-4 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
                   >
                     {isLoading ? (
-                      <><Loader2 className="w-4 h-4 animate-spin" /><span>Verifyingâ€¦</span></>
+                      <><Loader2 className="w-4 h-4 animate-spin" /><span>Verifying...</span></>
                     ) : (
-                      <><span>Verify & Continue</span><ArrowRight className="w-4 h-4" /></>
+                      <><span>Verify and continue</span><ArrowRight className="w-4 h-4" /></>
                     )}
                   </button>
                 </form>
               )}
 
           {/* Below-card note */}
-          <p className="text-center text-[12px] text-gray-400 mt-5">
+          <p className="text-center text-xs text-slate-400 mt-5">
             Don't have an account?{' '}
-            <span className="text-[#0f172a] font-semibold">
-              Just sign in and we'll create one automatically.
+            <span className="text-slate-800 font-medium">
+              Sign in with work email to provision automatically.
             </span>
           </p>
         </div>
         </div>{/* end right auth panel */}
       </main>
 
-      {/* â”€â”€ Footer â”€â”€ */}
-      <footer className="border-t border-gray-200/80 bg-white/80">
-        <div className="max-w-7xl mx-auto px-6 sm:px-10 py-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-gray-400">
-          <span>Â© {new Date().getFullYear()} Samvada AI Technologies, Inc.</span>
+      {/* Footer */}
+      <footer className="border-t border-slate-200/90 bg-white">
+        <div className="max-w-7xl mx-auto px-6 sm:px-10 py-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
+          <span>&copy; {new Date().getFullYear()} Samvada Technologies, Inc.</span>
           <div className="flex items-center gap-5">
-            <a href="#" className="hover:text-gray-600 transition-colors">Privacy</a>
-            <a href="#" className="hover:text-gray-600 transition-colors">Terms</a>
-            <a href="#" className="hover:text-gray-600 transition-colors">Security</a>
+            <a href="#" className="hover:text-slate-600 transition-colors">Privacy</a>
+            <a href="#" className="hover:text-slate-600 transition-colors">Terms</a>
+            <a href="#" className="hover:text-slate-600 transition-colors">Security</a>
           </div>
         </div>
       </footer>

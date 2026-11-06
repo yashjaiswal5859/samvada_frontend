@@ -28,6 +28,7 @@ import { getCampaigns, createCampaign } from '../../api/campaigns';
 import { getAnalyticsSummary } from '../../api/analytics';
 import { AnalyticsSummary } from '../../types';
 import { formatDuration, formatDate } from '../../utils/formatters';
+import { ROUTES } from '../../constants/routes';
 import { Modal } from '../../components/ui/Modal';
 import { CampaignItem, DEFAULT_CAMPAIGNS } from '../../utils/constants';
 
@@ -395,7 +396,7 @@ export const CampaignListPage: React.FC = () => {
                   </button>
 
                   <button
-                    onClick={() => navigate('/conversations')}
+                    onClick={() => navigate(ROUTES.CALLS)}
                     className="px-3 py-2 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
                   >
                     <span>View Calls</span>

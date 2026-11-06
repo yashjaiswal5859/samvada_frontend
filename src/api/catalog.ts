@@ -42,7 +42,7 @@ export interface BulkUploadSummary {
 
 export const getCatalogModels = async (): Promise<CatalogGroupedModels> => {
   try {
-    const res = await apiClient.get<APIEnvelope<CatalogGroupedModels>>('/catalog/models');
+    const res = await apiClient.get<APIEnvelope<CatalogGroupedModels>>('/api/v1/catalog/models');
     if (res.data?.success && res.data.data) {
       return res.data.data;
     }
@@ -54,7 +54,7 @@ export const getCatalogModels = async (): Promise<CatalogGroupedModels> => {
 
 export const getCatalogPhoneNumbers = async (search?: string): Promise<any[]> => {
   try {
-    const res = await apiClient.get<APIEnvelope<any[]>>('/catalog/phone-numbers', {
+    const res = await apiClient.get<APIEnvelope<any[]>>('/api/v1/catalog/phone-numbers', {
       params: search ? { search } : undefined,
     });
     if (res.data?.success && Array.isArray(res.data.data)) {
@@ -71,7 +71,7 @@ export const uploadAdminPhoneNumbers = async (
   numbers: CatalogPhoneNumberInput[]
 ): Promise<BulkUploadSummary | null> => {
   const res = await apiClient.post<APIEnvelope<BulkUploadSummary>>(
-    '/admin/catalog/phone-numbers',
+    '/api/v1/admin/catalog/phone-numbers',
     numbers
   );
   return res.data?.data || null;
@@ -81,7 +81,7 @@ export const uploadAdminModels = async (
   models: Partial<AIModelItem>[]
 ): Promise<AIModelItem[]> => {
   const res = await apiClient.post<APIEnvelope<AIModelItem[]>>(
-    '/admin/catalog/models',
+    '/api/v1/admin/catalog/models',
     models
   );
   return res.data?.data || [];
@@ -91,7 +91,7 @@ export const uploadAdminSTTModels = async (
   models: Partial<AIModelItem>[]
 ): Promise<AIModelItem[]> => {
   const res = await apiClient.post<APIEnvelope<AIModelItem[]>>(
-    '/admin/catalog/stt',
+    '/api/v1/admin/catalog/stt',
     models
   );
   return res.data?.data || [];
@@ -101,7 +101,7 @@ export const uploadAdminTTSModels = async (
   models: Partial<AIModelItem>[]
 ): Promise<AIModelItem[]> => {
   const res = await apiClient.post<APIEnvelope<AIModelItem[]>>(
-    '/admin/catalog/tts',
+    '/api/v1/admin/catalog/tts',
     models
   );
   return res.data?.data || [];
@@ -111,7 +111,7 @@ export const uploadAdminLLMModels = async (
   models: Partial<AIModelItem>[]
 ): Promise<AIModelItem[]> => {
   const res = await apiClient.post<APIEnvelope<AIModelItem[]>>(
-    '/admin/catalog/llm',
+    '/api/v1/admin/catalog/llm',
     models
   );
   return res.data?.data || [];

@@ -37,25 +37,12 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, theme }) => {
 
   return (
     <div
-      className={`min-h-screen flex font-sans relative overflow-hidden ${
+      className={`min-h-screen flex font-sans relative ${
         isLight
           ? 'portal-light bg-[#f8fafc] text-slate-900 selection:bg-slate-900 selection:text-white'
-          : 'bg-[#070b16] text-zinc-100 selection:bg-blue-600 selection:text-white'
+          : 'bg-[#0b0d14] text-zinc-100 selection:bg-slate-800 selection:text-white'
       }`}
     >
-      {/* Ambient backdrop */}
-      {!isLight ? (
-        <>
-          <div className="fixed top-0 right-1/4 w-[750px] h-[380px] bg-blue-600/8 rounded-full blur-[160px] pointer-events-none z-0" />
-          <div className="fixed -bottom-36 -left-36 w-[560px] h-[560px] bg-blue-900/10 rounded-full blur-[160px] pointer-events-none z-0" />
-          <div className="fixed -bottom-28 -right-28 w-[450px] h-[450px] bg-slate-800/15 rounded-full blur-[140px] pointer-events-none z-0" />
-        </>
-      ) : (
-        <>
-          <div className="fixed top-0 right-1/4 w-[600px] h-[320px] bg-emerald-50/30 rounded-full blur-[160px] pointer-events-none z-0" />
-          <div className="fixed bottom-0 left-1/3 w-[500px] h-[300px] bg-slate-100/60 rounded-full blur-[140px] pointer-events-none z-0" />
-        </>
-      )}
 
       {isMobileNavOpen && (
         <button
@@ -77,10 +64,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, theme }) => {
             {/* Left: Engine & Telephony Trunk Status */}
             <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
               <div className="flex items-center gap-1.5 font-medium text-slate-700 shrink-0">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                </span>
+                <span className="inline-flex rounded-full h-2 w-2 bg-emerald-500" />
                 <span className="font-semibold text-slate-800 text-[10px] sm:text-[11px]">Samvada Voice Engine</span>
                 <span className="text-slate-300">•</span>
                 <span className="text-emerald-700 font-semibold text-[10px] sm:text-[11px]">Ready</span>

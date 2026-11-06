@@ -187,47 +187,36 @@ export const LiveVoiceDemoCard: React.FC<{ className?: string }> = ({ className 
 
   return (
     <div className={`w-full max-w-xl ${className}`}>
-      {/* Outer Card — light with subtle border and shadow */}
-      <div className="relative rounded-2xl bg-white border border-gray-200 p-5 sm:p-6 shadow-md overflow-hidden">
+      {/* Outer Card — clean graphite/slate surface with crisp hairline */}
+      <div className="relative rounded-xl bg-white border border-slate-200/90 p-5 sm:p-6 shadow-sm overflow-hidden">
         
-        {/* Subtle ambient depth */}
-        <div className="absolute -top-12 -left-12 w-48 h-48 bg-blue-100/40 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-12 -right-12 w-48 h-48 bg-indigo-100/40 rounded-full blur-3xl pointer-events-none" />
-
         {/* --- TOP ROW: CUSTOMER MESSAGE + "INTERACTIVE VOICE STREAM" PILL --- */}
         <div className="flex items-start justify-between gap-4">
           
           {/* Customer Avatar & Speech Bubble */}
           <div className="flex items-start gap-3 max-w-[80%]">
-            {/* Corporate Blue Avatar */}
-            <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-600/30 flex-shrink-0 mt-0.5">
-              <User className="w-5 h-5 text-white" />
+            <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center text-white flex-shrink-0 mt-0.5">
+              <User className="w-4 h-4 text-slate-100" />
             </div>
 
             {/* Bubble with Customer label */}
             <div className="flex flex-col items-start">
-              <span className="text-[11px] font-medium text-blue-600 mb-1">
-                Customer
+              <span className="text-[11px] font-medium text-slate-500 mb-1">
+                Inbound Caller
               </span>
-              <div className="bg-blue-50 border border-blue-200/80 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
-                <p className="text-xs sm:text-[13px] text-gray-800 font-normal leading-relaxed">
+              <div className="bg-slate-50 border border-slate-200 rounded-lg rounded-tl-none px-3.5 py-2.5 shadow-2xs">
+                <p className="text-xs sm:text-[13px] text-slate-800 font-normal leading-relaxed">
                   {current.customerText}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Top Right: "Interactive Voice Stream •" Pill */}
+          {/* Top Right: Telephony Status badge */}
           <div className="flex-shrink-0">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-600 text-[11px] font-medium shadow-sm">
-              {/* Mini audio equalizer icon */}
-              <span className="flex items-center gap-0.5 h-3">
-                <span className="w-0.5 h-2 bg-blue-400 rounded-full" />
-                <span className="w-0.5 h-3.5 bg-blue-400 rounded-full" />
-                <span className="w-0.5 h-2 bg-blue-400 rounded-full" />
-              </span>
-              <span>Interactive Voice Stream</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse ml-0.5" />
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-50 border border-slate-200 text-slate-700 text-[10px] font-mono font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <span>180ms p95 · Opus 48kHz</span>
             </div>
           </div>
         </div>
@@ -244,24 +233,24 @@ export const LiveVoiceDemoCard: React.FC<{ className?: string }> = ({ className 
         {/* --- BOTTOM ROW: SAMVADA AI MESSAGE (ALIGNED TO RIGHT) --- */}
         <div className="flex items-end justify-end gap-3 w-full">
           {/* Bubble with Samvada AI label */}
-          <div className="flex flex-col items-start max-w-[78%]">
-            <span className="text-[11px] font-medium text-indigo-600 mb-1 pl-1">
-              Samvada AI
+          <div className="flex flex-col items-end max-w-[78%]">
+            <span className="text-[11px] font-medium text-emerald-700 mb-1 pr-1">
+              Samvada Agent
             </span>
-            <div className="bg-indigo-50 border border-indigo-200/80 rounded-2xl rounded-tr-sm px-4 py-3 shadow-sm text-left">
-              <p className="text-xs sm:text-[13px] text-gray-800 font-normal leading-relaxed">
+            <div className="bg-emerald-50/60 border border-emerald-200/80 rounded-lg rounded-tr-none px-3.5 py-2.5 shadow-2xs text-left">
+              <p className="text-xs sm:text-[13px] text-slate-800 font-normal leading-relaxed">
                 {current.aiText}
               </p>
             </div>
           </div>
 
-          {/* Right Avatar: Light circle with indigo waveform bars */}
-          <div className="w-10 h-10 rounded-full bg-indigo-50 border border-indigo-200 flex items-center justify-center flex-shrink-0 shadow-sm mb-0.5">
-            <div className="flex items-center gap-0.5 h-4">
-              <span className="w-0.5 h-2 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
-              <span className="w-0.5 h-4 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
-              <span className="w-0.5 h-3 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.45s]" />
-              <span className="w-0.5 h-2 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.2s]" />
+          {/* Right Avatar */}
+          <div className="w-8 h-8 rounded-lg bg-emerald-700 flex items-center justify-center flex-shrink-0 text-white shadow-2xs mb-0.5">
+            <div className="flex items-center gap-0.5 h-3.5">
+              <span className="w-0.5 h-2 bg-emerald-100 rounded-full" />
+              <span className="w-0.5 h-3 bg-white rounded-full" />
+              <span className="w-0.5 h-2.5 bg-emerald-100 rounded-full" />
+              <span className="w-0.5 h-1.5 bg-emerald-200 rounded-full" />
             </div>
           </div>
         </div>
@@ -274,10 +263,10 @@ export const LiveVoiceDemoCard: React.FC<{ className?: string }> = ({ className 
               type="button"
               onClick={() => setActiveTurn(turn.id)}
               aria-label={`Switch to scenario ${turn.id + 1}`}
-              className={`rounded-full transition-all duration-300 ${
+              className={`rounded-full transition-all duration-200 ${
                 activeTurn === turn.id
-                  ? 'w-2 h-2 bg-indigo-500 shadow-sm shadow-indigo-400/50'
-                  : 'w-1.5 h-1.5 bg-gray-300 hover:bg-gray-400'
+                  ? 'w-2 h-2 bg-slate-900'
+                  : 'w-1.5 h-1.5 bg-slate-300 hover:bg-slate-400'
               }`}
             />
           ))}
